@@ -11,7 +11,7 @@ export interface AuthUser {
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Administrador",
   recepcionista: "Recepcionista",
-  tecnico: "Técnico",
+  tecnico: "Tecnico",
 };
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {

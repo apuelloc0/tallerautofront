@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,19 +9,34 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkshop } from "@/context/WorkshopContext";
-import { PART_CATEGORIES } from "@/data/mockData";
-import { Plus, Search, AlertTriangle } from "lucide-react";
+import { PART_CATEGORIES } from "@/data/mockData"; // Asegúrate de tener estas categorías definidas
+import { Plus, Search, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 import type { Part } from "@/types/workshop";
 
 export default function InventoryPage() {
-  const { parts, setParts } = useWorkshop();
+  const { parts, addPart, updatePart } = useWorkshop();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editPart, setEditPart] = useState<Part | null>(null);
   const [form, setForm] = useState({ code: "", name: "", category: "", stock: 0, minStock: 5, price: 0 });
+
+  // Formateador para Pesos Colombianos
+  const formatCOP = (value: number) => 
+    new Intl.NumberFormat('es-CO', { 
+      style: 'currency', currency: 'COP', maximumFractionDigits: 0 
+    }).format(value);
+
+  // Efecto para capturar búsquedas desde el Dashboard
+  useEffect(() => {
+    if (location.state?.searchPart) {
+      setSearch(location.state.searchPart);
+    }
+  }, [location.state]);
 
   const filtered = parts.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase());
@@ -40,22 +56,38 @@ export default function InventoryPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.code || !form.name || !form.category) { toast.error("Completa los campos"); return; }
-    if (editPart) {
-      setParts((prev) => prev.map((p) => (p.id === editPart.id ? { ...p, ...form } : p)));
-      toast.success("Repuesto actualizado");
-    } else {
-      setParts((prev) => [...prev, { id: `p${Date.now()}`, ...form }]);
-      toast.success("Repuesto agregado");
+    try {
+      if (editPart) {
+        await updatePart(editPart.id, form);
+        toast.success("Repuesto actualizado");
+      } else {
+        await addPart(form);
+        toast.success("Repuesto agregado");
+      }
+      setDialogOpen(false);
+    } catch (error) {
+      toast.error("Error al conectar con el servidor de inventario");
     }
-    setDialogOpen(false);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventario de Repuestos</h1>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">Inventario de Repuestos</h1>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent><p className="max-w-xs">Control de stock. El inventario se descuenta automáticamente cuando los técnicos registran piezas en las órdenes.</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
         <Button onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Agregar</Button>
       </div>
 
@@ -104,7 +136,7 @@ export default function InventoryPage() {
                         <span className="text-sm">{part.stock}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">${part.price.toFixed(2)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatCOP(part.price)}</TableCell>
                     <TableCell>
                       {isLow ? (
                         <Badge variant="destructive" className="gap-1">
@@ -150,15 +182,33 @@ export default function InventoryPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Stock</Label>
-                <Input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: +e.target.value }))} />
+                <Input 
+                  type="number" 
+                  value={form.stock} 
+                  onChange={(e) => setForm((f) => ({ ...f, stock: Math.max(0, Number(e.target.value)) }))} 
+                  onFocus={(e) => setTimeout(() => e.target.select(), 0)}
+                  min={0}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Stock mín.</Label>
-                <Input type="number" value={form.minStock} onChange={(e) => setForm((f) => ({ ...f, minStock: +e.target.value }))} />
+                <Input 
+                  type="number" 
+                  value={form.minStock} 
+                  onChange={(e) => setForm((f) => ({ ...f, minStock: Math.max(0, Number(e.target.value)) }))} 
+                  onFocus={(e) => setTimeout(() => e.target.select(), 0)}
+                  min={0}
+                />
               </div>
               <div className="space-y-2">
-                <Label>Precio ($)</Label>
-                <Input type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: +e.target.value }))} />
+                <Label>Precio (COP)</Label>
+                <Input 
+                  type="number" 
+                  value={form.price} 
+                  onChange={(e) => setForm((f) => ({ ...f, price: Math.max(0, Number(e.target.value)) }))} 
+                  onFocus={(e) => setTimeout(() => e.target.select(), 0)}
+                  min={0}
+                />
               </div>
             </div>
           </div>

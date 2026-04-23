@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Wrench, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -24,61 +24,66 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      await login(email, password);
+      await login(username, password);
       toast({ title: "Bienvenido", description: "Sesión iniciada correctamente." });
-      navigate(from, { replace: true });
+      navigate("/", { replace: true }); // Siempre redirigir al Dashboard después de iniciar sesión
     } catch (err: any) {
       setError(err.message);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
+      {/* Elementos decorativos de fondo */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-500/10 rounded-full blur-[120px]" />
+
+      <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-8 md:gap-20 z-10 px-6">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg">
-            <Wrench className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">AutoTaller</h1>
-          <p className="text-sm text-muted-foreground">Sistema de Gestión Interno</p>
+        <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1 animate-in fade-in slide-in-from-left-10 duration-1000">
+          <img src="/taller.png" alt="Logo" className="w-[180px] md:w-[280px] object-contain drop-shadow-2xl mb-4" />
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground">AutoTaller</h1>
+          <p className="text-xs md:text-base text-muted-foreground font-bold uppercase tracking-[0.3em] opacity-80">Gestión Profesional</p>
         </div>
 
-        <Card className="shadow-lg border-0">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">Iniciar Sesión</CardTitle>
+        {/* Formulario */}
+        <div className="w-full max-w-md space-y-4 animate-in fade-in slide-in-from-right-10 duration-1000 delay-200">
+        <Card className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-2xl rounded-[2.5rem] overflow-hidden border">
+          <CardHeader className="text-center pb-2 pt-6">
+            <CardTitle className="text-xl font-bold">Bienvenido</CardTitle>
             <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-8 pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <div className="flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-xs text-destructive animate-in shake-in duration-300">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {error}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo electrónico</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className="text-[10px] font-bold uppercase ml-1 opacity-70 tracking-widest">Correo electrónico</Label>
                 <Input
-                  id="email"
+                  id="username"
                   type="email"
                   placeholder="correo@taller.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-background/50 border-white/10 rounded-2xl focus:ring-primary focus:border-primary transition-all px-4"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                 />
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Contraseña</Label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between ml-1">
+                  <Label htmlFor="password" className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Contraseña</Label>
                   <Link
                     to="/recuperar-password"
-                    className="text-xs text-primary hover:underline"
+                    className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase"
                   >
-                    ¿Olvidaste tu contraseña?
+                    ¿Olvidó su clave?
                   </Link>
                 </div>
                 <div className="relative">
@@ -86,6 +91,7 @@ export default function LoginPage() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
+                    className="h-12 bg-background/50 border-white/10 rounded-2xl focus:ring-primary focus:border-primary transition-all px-4"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -102,36 +108,27 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full h-12 rounded-2xl text-base font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Ingresando...
                   </>
                 ) : (
-                  "Iniciar Sesión"
+                  "Entrar al Sistema"
                 )}
               </Button>
             </form>
-
-            {/* Demo credentials */}
-            <div className="mt-6 rounded-lg bg-muted/50 p-3 space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Credenciales de prueba:</p>
-              <div className="grid gap-1 text-xs text-muted-foreground">
-                <p><span className="font-medium">Admin:</span> admin@taller.com / admin123</p>
-                <p><span className="font-medium">Recepción:</span> recepcion@taller.com / recepcion123</p>
-                <p><span className="font-medium">Técnico:</span> tecnico@taller.com / tecnico123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center md:text-left md:ml-4 text-xs text-muted-foreground">
           ¿No tienes cuenta?{" "}
           <Link to="/registro" className="text-primary hover:underline font-medium">
             Solicitar acceso
           </Link>
         </p>
+        </div>
       </div>
     </div>
   );

@@ -2,17 +2,27 @@ import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkshop } from "@/context/WorkshopContext";
 import { STATUS_COLUMNS, STATUS_LABELS, OrderStatus } from "@/types/workshop";
-import { Clock, User } from "lucide-react";
+import { Clock, User, Search, Filter, CheckCircle2, Info, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export default function KanbanPage() {
-  const { orders, updateOrderStatus, getVehicle, getTechnician } = useWorkshop();
+  const { orders, updateOrderStatus, getVehicle, technicians } = useWorkshop();
   const [filterTech, setFilterTech] = useState("");
+  const [searchPlate, setSearchPlate] = useState("");
 
-  const filteredOrders = filterTech
-    ? orders.filter((o) => o.technicianId === filterTech)
-    : orders;
+  // Aplicamos filtros combinados: por Técnico y por Placa
+  const filteredOrders = orders.filter((o) => {
+    const vehicle = getVehicle(o.vehicleId);
+    const matchesTech = filterTech === "all" || !filterTech || o.technicianId === filterTech;
+    const matchesPlate = !searchPlate || vehicle?.plate.toLowerCase().includes(searchPlate.toLowerCase());
+    return matchesTech && matchesPlate;
+  });
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -30,16 +40,51 @@ export default function KanbanPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pizarra Kanban</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">Tablero de Control</h1>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent><p className="max-w-xs">Gestiona el flujo visualmente. Arrastra tarjetas para cambiar estados y usa el check para finalizar servicios.</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar placa..." 
+              value={searchPlate}
+              onChange={(e) => setSearchPlate(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filterTech} onValueChange={setFilterTech}>
+            <SelectTrigger className="w-full sm:w-48">
+              <div className="flex items-center gap-2"><Filter className="h-3.5 w-3.5" /><SelectValue placeholder="Técnico" /></div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los técnicos</SelectItem>
+              {technicians.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex flex-wrap gap-6 pb-8 items-start">
           {STATUS_COLUMNS.map((status) => {
             const columnOrders = filteredOrders.filter((o) => o.status === status);
             return (
-              <div key={status} className="min-w-[260px] flex-shrink-0">
+              <div key={status} className="flex-1 min-w-[280px] max-w-full md:max-w-[350px]">
                 <div className={`rounded-lg border border-t-4 ${columnColors[status]} bg-muted/30 p-3`}>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold">{STATUS_LABELS[status]}</h3>
@@ -54,7 +99,6 @@ export default function KanbanPage() {
                       >
                         {columnOrders.map((order, index) => {
                           const vehicle = getVehicle(order.vehicleId);
-                          const tech = getTechnician(order.technicianId);
                           return (
                             <Draggable key={order.id} draggableId={order.id} index={index}>
                               {(provided, snapshot) => (
@@ -68,13 +112,40 @@ export default function KanbanPage() {
                                 >
                                   <CardContent className="p-3 space-y-2">
                                     <div className="flex items-center justify-between">
-                                      <span className="font-bold text-sm">{vehicle?.plate}</span>
-                                      <span className="text-xs text-muted-foreground">{vehicle?.brand}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-sm tracking-tighter">{vehicle?.plate}</span>
+                                        {order.diagnosis?.includes("[REVISIÓN REQUERIDA]") && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <AlertCircle className="h-3.5 w-3.5 text-orange-500 animate-pulse cursor-help" />
+                                              </TooltipTrigger>
+                                              <TooltipContent>Técnico solicita veredicto final</TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                      </div>
+                                      {status === "listo_entrega" && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateOrderStatus(order.id, "entregado" as OrderStatus);
+                                            toast.success("Vehículo entregado. La orden ahora está en el historial.");
+                                          }}
+                                          title="Marcar como Entregado"
+                                        >
+                                          <CheckCircle2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      {status !== "listo_entrega" && <span className="text-xs text-muted-foreground">{vehicle?.brand}</span>}
                                     </div>
                                     <p className="text-xs text-muted-foreground line-clamp-1">{order.faultDescription}</p>
                                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                                       <span className="flex items-center gap-1">
-                                        <User className="h-3 w-3" /> {tech?.name?.split(" ")[0]}
+                                        <User className="h-3 w-3" /> {(order.technicianName || "S/A").split(" ")[0]}
                                       </span>
                                       <span className="flex items-center gap-1">
                                         <Clock className="h-3 w-3" /> {order.createdAt}

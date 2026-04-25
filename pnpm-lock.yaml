@@ -98,6 +98,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.49.1
         version: 2.103.3
+      '@tanstack/query-core':
+        specifier: ^5.83.0
+        version: 5.99.0
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.99.0(react@18.3.1)

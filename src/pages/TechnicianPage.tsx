@@ -171,7 +171,7 @@ export default function TechnicianPage() {
       const nextStatus = STATUS_COLUMNS[idx + 1];
 
       // Bloqueo visual de seguridad para el técnico
-      if (nextStatus === 'listo_entrega' && user?.role !== 'admin') {
+      if (nextStatus === 'listo_entrega' && !['ADMINISTRADOR', 'SUPER_ADMIN'].includes(user?.role || '')) {
         toast.error("La entrega final requiere autorización del Administrador.");
         return;
       }
@@ -288,7 +288,7 @@ export default function TechnicianPage() {
                   </div>
 
                   <div className="flex gap-2 flex-wrap pt-2">
-                    {order.status === 'en_reparacion' && user?.role !== 'admin' ? (
+                    {order.status === 'en_reparacion' && !['ADMINISTRADOR', 'SUPER_ADMIN'].includes(user?.role || '') ? (
                       <Button 
                         size="sm" 
                         className="bg-green-600 hover:bg-green-700" 
@@ -303,7 +303,7 @@ export default function TechnicianPage() {
                     <Select 
                       value={order.status} 
                       onValueChange={(newVal) => {
-                        if (newVal === 'listo_entrega' && user?.role !== 'admin') {
+                        if (newVal === 'listo_entrega' && !['ADMINISTRADOR', 'SUPER_ADMIN'].includes(user?.role || '')) {
                           toast.error("Usa el botón 'Terminar Trabajo' para finalizar.");
                           return;
                         }

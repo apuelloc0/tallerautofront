@@ -19,7 +19,7 @@ import {
 import { useWorkshop } from "@/context/WorkshopContext";
 import { useAuth } from "@/context/AuthContext";
 import { STATUS_LABELS, STATUS_COLUMNS, OrderStatus } from "@/types/workshop";
-import { Wrench, Clock, MessageSquarePlus, Package, ChevronRight, LogOut, ArrowLeft, Sun, Moon, Info, Trash2, RefreshCw, CheckCircle2, Phone, Menu } from "lucide-react";
+import { Wrench, Clock, MessageSquarePlus, Package, ChevronRight, LogOut, ArrowLeft, Sun, Moon, Info, Trash2, RefreshCw, CheckCircle2, Phone, Menu, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 

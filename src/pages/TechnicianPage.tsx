@@ -8,6 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import imageCompression from "browser-image-compression";
+import api from "@/api/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +22,7 @@ import {
 import { useWorkshop } from "@/context/WorkshopContext";
 import { useAuth } from "@/context/AuthContext";
 import { STATUS_LABELS, STATUS_COLUMNS, OrderStatus } from "@/types/workshop";
-import { Wrench, Clock, MessageSquarePlus, Package, ChevronRight, LogOut, ArrowLeft, Sun, Moon, Info, Trash2, RefreshCw, CheckCircle2, Phone, Menu, Loader2 } from "lucide-react";
+import { Wrench, Clock, MessageSquarePlus, Package, ChevronRight, LogOut, ArrowLeft, Sun, Moon, Info, Trash2, RefreshCw, CheckCircle2, Phone, Menu, Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -34,6 +37,43 @@ export default function TechnicianPage() {
   const [partQty, setPartQty] = useState(1);
   const [isFinishing, setIsFinishing] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
+
+  const handleImageUpload = async (orderId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const order = orders.find(o => o.id === orderId);
+    if (order && (order as any).images?.length >= 3) {
+      toast.error("Máximo 3 fotos por orden.");
+      return;
+    }
+
+    const file = files[0];
+    setIsUploading(orderId);
+
+    try {
+      const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1280, useWebWorker: true };
+      const compressedFile = await imageCompression(file, options);
+
+      const formData = new FormData();
+      formData.append("image", compressedFile); 
+
+      const { data } = await api.post("/service-orders/upload-image", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      if (data.ok) {
+        const currentImages = (order as any).images || [];
+        await updateOrder(orderId, { ...order, images: [...currentImages, data.url] });
+        toast.success("Foto añadida a la orden");
+      }
+    } catch (error) {
+      toast.error("Error al subir imagen");
+    } finally {
+      setIsUploading(null);
+    }
+  };
 
   // Formateador COP consistente
   const formatCOP = (v: number) => 
@@ -58,11 +98,14 @@ export default function TechnicianPage() {
     }
   }, [isDark]);
 
-  // Filtramos automáticamente por el ID del usuario actual
-  // Ocultamos las órdenes que ya fueron terminadas (listas para entrega) o entregadas físicamente
+  // Lógica de filtrado e identificación de rol:
+  const isAdmin = user?.role === 'admin' || user?.role === 'ADMINISTRADOR' || user?.role === 'SUPER_ADMIN';
+
+  // - Si es ADMIN: Ve TODAS las órdenes activas (Supervisión de patio)
+  // - Si es TÉCNICO: Solo ve las asignadas a él
   const techOrders = orders.filter((o) => 
-    o.technicianId === user?.id && 
-    o.status !== "listo_entrega" && 
+    (isAdmin || o.technicianId === user?.id) && 
+    o.status !== "listo_entrega" &&
     o.status !== "entregado"
   );
 
@@ -153,15 +196,27 @@ export default function TechnicianPage() {
     try {
       // Generamos una marca de tiempo para la bitácora
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const systemNote = `[REVISIÓN REQUERIDA] ✅ ${time} - El técnico ${user?.name} ha marcado el trabajo como FINALIZADO. Pendiente de veredicto administrativo.`;
+      const isOwner = isAdmin;
+      const statusText = isOwner ? 'AUTORIZADO' : 'FINALIZADO';
+      const systemNote = `[REVISIÓN REQUERIDA] ✅ ${time} - El ${isOwner ? 'Administrador' : 'Técnico'} ${user?.name} ha marcado el trabajo como ${statusText}.`;
       const newDiagnosis = order.diagnosis ? `${order.diagnosis}\n\n${systemNote}` : systemNote;
 
       await updateOrder(orderId, { ...order, diagnosis: newDiagnosis, status: 'listo_entrega' as OrderStatus });
-      toast.success("Notificación enviada. El administrador revisará el vehículo para autorizar la entrega.");
+      toast.success(isOwner ? "Orden movida a lista para entrega." : "Notificación enviada al administrador.");
     } catch (e) {
       toast.error("No se pudo enviar la solicitud de revisión");
     } finally {
       setIsFinishing(null);
+    }
+  };
+
+  const handleFinalizeOrder = async (orderId: string) => {
+    if (!confirm("¿Confirmas que el vehículo ha sido entregado al cliente? Esta acción cerrará la orden.")) return;
+    try {
+      await updateOrderStatus(orderId, "entregado" as OrderStatus);
+      toast.success("Vehículo entregado. La orden ha sido cerrada.");
+    } catch (e) {
+      toast.error("No se pudo finalizar la orden.");
     }
   };
 
@@ -189,10 +244,10 @@ export default function TechnicianPage() {
           <div className="flex items-center gap-3">
             <img src="/taller.png" alt="Logo" className="h-10 w-10 object-contain shrink-0" />
             <div className="flex flex-col min-w-0">
-              <h1 className="text-sm font-bold leading-none tracking-tight truncate">Hoja de Trabajo</h1>
+              <h1 className="text-sm font-bold leading-none tracking-tight truncate">{isAdmin ? 'Supervisión de Patio' : 'Hoja de Trabajo'}</h1>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="text-[10px] opacity-80 font-medium truncate max-w-[120px]">
-                  Técnico: {user?.name}
+                  Usuario: {user?.name}
                 </span>
                 <TooltipProvider>
                   <Tooltip>
@@ -288,7 +343,7 @@ export default function TechnicianPage() {
                   </div>
 
                   <div className="flex gap-2 flex-wrap pt-2">
-                    {order.status === 'en_reparacion' && !['ADMINISTRADOR', 'SUPER_ADMIN'].includes(user?.role || '') ? (
+                    {order.status === 'en_reparacion' && !isAdmin && (
                       <Button 
                         size="sm" 
                         className="bg-green-600 hover:bg-green-700" 
@@ -298,13 +353,29 @@ export default function TechnicianPage() {
                         {isFinishing === order.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />} 
                         Terminar Trabajo
                       </Button>
-                    ) : null}
+                    )}
+
+                    {order.status === 'listo_entrega' && isAdmin && (
+                      <Button 
+                        size="sm" 
+                        className="bg-primary hover:bg-primary/90" 
+                        onClick={() => handleFinalizeOrder(order.id)}
+                        disabled={isFinishing === order.id}
+                      >
+                        {isFinishing === order.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />} 
+                        Finalizar Orden
+                      </Button>
+                    )}
 
                     <Select 
                       value={order.status} 
                       onValueChange={(newVal) => {
-                        if (newVal === 'listo_entrega' && !['ADMINISTRADOR', 'SUPER_ADMIN'].includes(user?.role || '')) {
+                        if (newVal === 'listo_entrega' && !isAdmin) {
                           toast.error("Usa el botón 'Terminar Trabajo' para finalizar.");
+                          return;
+                        }
+                        if (newVal === 'entregado' && !isAdmin) {
+                          toast.error("Solo un administrador puede marcar la orden como entregada.");
                           return;
                         }
                         updateOrderStatus(order.id, newVal as OrderStatus);
@@ -316,7 +387,10 @@ export default function TechnicianPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(STATUS_LABELS)
-                          .filter(([key]) => key !== 'entregado' && key !== 'listo_entrega')
+                          .filter(([key]) => {
+                            if (isAdmin) return true;
+                            return key !== 'entregado' && key !== 'listo_entrega';
+                          })
                           .map(([key, label]) => (
                             <SelectItem key={key} value={key}>{label}</SelectItem>
                           ))}
@@ -329,6 +403,37 @@ export default function TechnicianPage() {
                     <Button size="sm" variant="outline" onClick={() => setPartDialog(order.id)}>
                       <Package className="h-4 w-4 mr-1" /> Repuesto
                     </Button>
+                  </div>
+
+                  {/* Sección de fotos para el técnico */}
+                  <div className="pt-2 border-t">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Fotos de Peritaje ({order.images?.length || 0}/3):</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {order.images?.map((url: string, idx: number) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border">
+                          <img src={url} className="object-cover w-full h-full" alt="Peritaje" />
+                        </div>
+                      ))}
+                      {(!order.images || order.images.length < 3) && (
+                        <label className={cn(
+                          "flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors",
+                          isUploading === order.id && "opacity-50 pointer-events-none"
+                        )}>
+                          {isUploading === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          ) : (
+                            <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*" 
+                            onChange={(e) => handleImageUpload(order.id, e)}
+                            disabled={!!isUploading}
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
 
                   {/* Repuestos ya cargados a esta orden */}

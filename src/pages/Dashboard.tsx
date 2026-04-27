@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Car, ClipboardList, DollarSign, Users, Loader2, BarChart3, Info, Calendar, Copy, Check, UserPlus, Wrench, AlertCircle, RefreshCw } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Car, ClipboardList, Users, Loader2, BarChart3, Info, Calendar as CalendarIcon, Copy, Check, UserPlus, Wrench, AlertCircle, RefreshCw, ChevronDown, ArrowUpRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,11 +8,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useWorkshop } from "@/context/WorkshopContext";
 import { useAuth } from "@/context/AuthContext";
 import { STATUS_LABELS } from "@/types/workshop";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import api from "@/api/api";
 import { CarLoader } from "@/components/ui/CarLoader";
+import { Calendar } from "@/components/ui/calendar";
  
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -63,9 +65,34 @@ export default function Dashboard() {
   // Detectamos órdenes que requieren veredicto del administrador
   // Solo mostramos la alerta si tiene la etiqueta de revisión Y la orden no ha sido entregada
   const pendingReviewOrders = useMemo(() => {
-    return orders.filter(o => 
-      o.status !== 'entregado' && o.diagnosis?.includes("[REVISIÓN REQUERIDA]")
+    return orders.filter(o =>
+      (o.status === 'listo_entrega' || o.diagnosis?.includes("[REVISIÓN REQUERIDA]")) &&
+      o.status !== 'entregado'
     );
+  }, [orders]);
+
+  // Obtenemos la lista detallada de vehículos en taller para el desplegable
+  const vehiclesInWorkshop = useMemo(() => 
+    orders.filter(o => o.status !== 'entregado'), [orders]);
+
+  // Obtenemos la lista de vehículos listos para entrega
+  const readyForDelivery = useMemo(() => 
+    orders.filter(o => o.status === 'listo_entrega'), [orders]);
+
+  // Agrupamos fechas con actividad para el calendario
+  const calendarActivity = useMemo(() => {
+    const activity: Record<string, { entries: boolean, exits: boolean }> = {};
+    orders.forEach(o => {
+      if (o.createdAt) {
+        if (!activity[o.createdAt]) activity[o.createdAt] = { entries: false, exits: false };
+        activity[o.createdAt].entries = true;
+      }
+      if (o.status === 'entregado' && o.updatedAt) {
+        if (!activity[o.updatedAt]) activity[o.updatedAt] = { entries: false, exits: false };
+        activity[o.updatedAt].exits = true;
+      }
+    });
+    return activity;
   }, [orders]);
 
   const hasWeeklyData = weeklyProductivityData.some(d => d.completadas > 0);
@@ -96,18 +123,17 @@ export default function Dashboard() {
 
   // Calculamos disponibilidad real basada en datos locales para máxima precisión
   const totalTechsCount = technicians.length;
-  // Un técnico está ocupado SOLO si tiene órdenes en diagnóstico, reparación o espera de repuestos
+  // Un técnico está ocupado si tiene cualquier orden que no haya sido entregada todavía
   const busyTechIds = new Set(
     orders
-      .filter(o => o.technicianId && !['entregado', 'listo_entrega', 'ingresado'].includes(o.status))
+      .filter(o => o.technicianId && o.status !== 'entregado')
       .map(o => o.technicianId)
   );
   const availableTechsCount = technicians.filter(t => !busyTechIds.has(t.id)).length;
 
   const kpis = [
-    { title: "Vehículos Hoy", value: stats?.kpis?.vehiclesToday ?? 0, icon: Car, color: "text-primary" },
-    { title: "Órdenes Activas", value: stats?.kpis?.activeOrders ?? 0, icon: ClipboardList, color: "text-primary" },
-    { title: "Ventas del Mes", value: formatCOP(Number(stats?.kpis?.monthlySales ?? 0)), icon: DollarSign, color: "text-success" },
+    { title: "Vehículos en Taller", value: vehiclesInWorkshop.length, icon: Car, color: "text-primary" },
+    { title: "Listos para Entrega", value: readyForDelivery.length, icon: ClipboardList, color: "text-primary" },
     { title: "Técnicos Disponibles", value: `${availableTechsCount}/${totalTechsCount}`, icon: Users, color: "text-primary" },
   ];
 
@@ -123,7 +149,7 @@ export default function Dashboard() {
         <div className="space-y-1">
           <h1 className="text-2xl font-black tracking-tight">Hola, {user?.name.split(' ')[0]}</h1>
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-70 flex items-center gap-2">
-            <Calendar className="h-3 w-3" /> {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            <CalendarIcon className="h-3 w-3" /> {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
         <Button 
@@ -179,15 +205,19 @@ export default function Dashboard() {
           <CardContent className="p-4 pt-2 space-y-2">
             <div className="flex flex-wrap gap-2">
               {pendingReviewOrders.map(order => {
-                const vehicle = getVehicle(order.vehicleId);
+                // SEGURIDAD SaaS: Soporte para camelCase y snake_case para evitar badges vacíos
+                const vehicle = getVehicle(order.vehicleId || (order as any).vehicle_id);
+                const client = getClient(order.clientId || (order as any).client_id);
+                
                 return (
                   <Badge 
                     key={order.id} 
                     variant="outline" 
                     className="bg-background/80 border-orange-200 dark:border-orange-900/50 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors py-1 px-3"
-                    onClick={() => navigate("/kanban")}
+                    onClick={() => navigate("/kanban")} // Redirige al Kanban para dar el veredicto
                   >
-                    {vehicle?.plate}
+                    <span className="font-bold mr-1">{vehicle?.plate || 'S/P'}</span>
+                    <span className="opacity-70 text-[9px]">— {client?.name || 'Revisar Orden'}</span>
                   </Badge>
                 );
               })}
@@ -197,24 +227,125 @@ export default function Dashboard() {
       )}
 
       {/* KPIs Grilla Estilizada */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi) => (
-          <Card key={kpi.title} className="border-none bg-card/60 backdrop-blur-md shadow-sm rounded-[2rem] overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between p-4 pb-0">
-              <div className={cn("p-2 rounded-2xl bg-muted/50", kpi.color.replace('text-', 'bg-').replace('success', 'green-500/10').replace('primary', 'primary/10'))}>
-                <kpi.icon className={cn("h-4 w-4", kpi.color)} />
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-2">
-              <div className="text-lg font-black tracking-tighter">{kpi.value}</div>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tracking-wider">{kpi.title}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {kpis.map((kpi) => {
+          const hasPopover = kpi.title === "Vehículos en Taller" || kpi.title === "Listos para Entrega";
+          const popoverData = kpi.title === "Vehículos en Taller" ? vehiclesInWorkshop : readyForDelivery;
+          
+          const CardContentUI = (
+            <Card className={cn(
+              "border-none bg-card/60 backdrop-blur-md shadow-sm rounded-[2rem] overflow-hidden transition-all h-full",
+              hasPopover && "cursor-pointer hover:bg-primary/5 hover:scale-[1.02] active:scale-95 group"
+            )}>
+              <CardHeader className="flex flex-row items-center justify-between p-4 pb-0">
+                <div className={cn("p-2 rounded-2xl bg-muted/50", kpi.color.replace('text-', 'bg-').replace('success', 'green-500/10').replace('primary', 'primary/10'))}>
+                  <kpi.icon className={cn("h-4 w-4", kpi.color)} />
+                </div>
+                {hasPopover && (
+                  <ChevronDown className="h-3 w-3 text-primary/40 group-hover:text-primary transition-colors" />
+                )}
+              </CardHeader>
+              <CardContent className="p-4 pt-2">
+                <div className="text-lg font-black tracking-tighter">{kpi.value}</div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tracking-wider">{kpi.title}</p>
+              </CardContent>
+            </Card>
+          );
+
+          if (hasPopover) {
+            return (
+              <Popover key={kpi.title}>
+                <PopoverTrigger asChild>
+                  {CardContentUI}
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-[calc(100vw-2rem)] sm:w-80 p-0 rounded-[1.5rem] shadow-2xl border-primary/10 backdrop-blur-xl bg-card/95 overflow-hidden" 
+                  align="start"
+                  sideOffset={8}
+                >
+                  <div className="flex flex-col max-h-[350px]">
+                    <div className="px-4 py-3 border-b border-primary/5 bg-muted/20">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                      {kpi.title === "Vehículos en Taller" ? "Inventario Activo" : "Listos para Salida"}
+                      </p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto no-scrollbar p-1.5 space-y-0.5">
+                      {popoverData.length === 0 ? (
+                        <p className="text-xs text-center py-8 text-muted-foreground italic">No hay vehículos en este estado</p>
+                      ) : popoverData.map(order => {
+                      const v = getVehicle(order.vehicleId);
+                      const c = getClient(order.clientId);
+                      return (
+                        <Button 
+                          key={order.id} variant="ghost" 
+                          className="w-full justify-start h-auto py-2.5 px-3 rounded-xl gap-3 hover:bg-primary/10 group/item text-left"
+                          onClick={() => navigate(`/ordenes/${order.id}`)}
+                        >
+                          <div className="flex flex-col items-start">
+                            <span className="font-mono font-bold text-xs group-hover/item:text-primary transition-colors">{v?.plate || 'S/P'}</span>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[180px]">{c?.name || 'Cliente desconocido'}</span>
+                          </div>
+                        </Button>
+                      );
+                    })}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            );
+          }
+
+          return <div key={kpi.title}>{CardContentUI}</div>;
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 border-none bg-card/40 backdrop-blur-md rounded-[2rem]">
+        {/* Mini Calendario Interactivo */}
+        <Card className="border-none bg-card/40 backdrop-blur-md rounded-[2rem] overflow-hidden">
+          <CardHeader className="py-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4 text-primary" /> Agenda de Patio
+            </CardTitle>
+            <Button 
+              variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-tighter"
+              onClick={() => navigate("/calendario")}
+            >
+              Ver todo <ArrowUpRight className="ml-1 h-3 w-3" />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex justify-center pb-4">
+            <Calendar
+              mode="single"
+              className="scale-90 md:scale-100 origin-top"
+              onSelect={(date) => {
+                if (date) {
+                  const dateStr = date.toLocaleDateString('en-CA');
+                  navigate("/calendario", { state: { initialDate: dateStr } });
+                }
+              }}
+              modifiers={{
+                hasEntry: (date) => calendarActivity[date.toLocaleDateString('en-CA')]?.entries,
+                hasExit: (date) => calendarActivity[date.toLocaleDateString('en-CA')]?.exits,
+              }}
+              modifiersStyles={{
+                hasEntry: { borderBottom: '2px solid hsl(var(--primary))' },
+                hasExit: { borderTop: '2px solid #22c55e' }, // Verde para salidas
+              }}
+            />
+          </CardContent>
+          <CardFooter className="px-4 py-2 bg-muted/20 border-t flex justify-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="text-[9px] font-bold uppercase opacity-60">Ingresos</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              <span className="text-[9px] font-bold uppercase opacity-60">Salidas</span>
+            </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="lg:col-span-2 border-none bg-card/40 backdrop-blur-md rounded-[2rem] flex flex-col">
           <CardHeader className="py-3">
             <div className="flex items-center gap-2">
               <CardTitle className="text-base">Productividad Semanal</CardTitle>
@@ -228,9 +359,9 @@ export default function Dashboard() {
               </TooltipProvider>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 flex flex-col items-center justify-center p-0 min-h-[300px]">
             {hasWeeklyData ? (
-              <ResponsiveContainer width="100%" height={150}>
+              <ResponsiveContainer width="100%" height={300}>
                 <BarChart 
                   data={weeklyProductivityData}
                   style={{ cursor: 'pointer' }}
@@ -262,7 +393,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[150px] flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/5">
+              <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/5">
                 <BarChart3 className="h-10 w-10 mb-2 opacity-20" />
                 <p className="text-sm font-medium">Sin actividad reciente</p>
                 <p className="text-xs opacity-70 italic">El rendimiento por día aparecerá aquí a medida que entregues vehículos</p>
@@ -271,7 +402,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-1 border-none bg-card/40 backdrop-blur-md rounded-[2rem]">
           <CardHeader>
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">Alertas de Stock</CardTitle>
@@ -302,10 +433,9 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Estado Detallado de Técnicos */}
-      <Card>
+        {/* Estado Detallado de Técnicos - Ahora dentro de la grilla principal */}
+        <Card className="lg:col-span-2 border-none bg-card/40 backdrop-blur-md rounded-[2rem]">
         <CardHeader className="py-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Wrench className="h-4 w-4 text-primary" /> Estado del Personal Operativo
@@ -314,23 +444,24 @@ export default function Dashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {technicians.map((tech) => {
-              const isBusy = busyTechIds.has(tech.id);
-              const activeOrder = orders.find(o => 
+              const assignedOrders = orders.filter(o => 
                 o.technicianId === tech.id && 
-                !['entregado', 'listo_entrega', 'ingresado'].includes(o.status)
+                o.status !== 'entregado'
               );
-              const vehicle = activeOrder ? getVehicle(activeOrder.vehicleId) : null;
+              const count = assignedOrders.length;
+              // Obtenemos solo las placas de los vehículos asignados
+              const plates = assignedOrders.map(o => getVehicle(o.vehicleId)?.plate).filter(Boolean);
 
               return (
-                <div key={tech.id} className="flex items-center justify-between p-2 border rounded-lg bg-muted/30">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold">{tech.name}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {isBusy ? `Trabajando en: ${vehicle?.plate || 'Orden activa'}` : 'Sin tareas críticas'}
+                <div key={tech.id} className="flex items-center justify-between p-3 border rounded-[1.5rem] bg-muted/30 transition-all hover:bg-muted/50 group">
+                  <div className="flex flex-col min-w-0 flex-1 mr-2">
+                    <span className="text-sm font-black tracking-tight truncate group-hover:text-primary transition-colors">{tech.name}</span>
+                    <span className="text-[10px] text-muted-foreground truncate font-medium">
+                      {count > 0 ? `Placas: ${plates.join(", ")}` : 'Sin órdenes asignadas'}
                     </span>
                   </div>
-                  <Badge variant={isBusy ? "destructive" : "default"} className="text-[10px]">
-                    {isBusy ? "OCUPADO" : "DISPONIBLE"}
+                  <Badge variant={count > 0 ? "destructive" : "outline"} className={cn("text-[9px] font-black h-5 border-primary/20", count === 0 && "opacity-50")}>
+                    {count > 0 ? `${count} ACTIVAS` : "LIBRE"}
                   </Badge>
                 </div>
               );
@@ -338,6 +469,7 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       <Card>
         <CardHeader>

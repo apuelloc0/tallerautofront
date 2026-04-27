@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkshop } from "@/context/WorkshopContext";
 import { STATUS_COLUMNS, STATUS_LABELS, OrderStatus } from "@/types/workshop";
-import { Clock, User, Search, Filter, CheckCircle2, Info, AlertCircle } from "lucide-react";
+import { Clock, User, Search, Filter, CheckCircle2, Info, AlertCircle, Package } from "lucide-react";
 import { toast } from "sonner";
 
 export default function KanbanPage() {
-  const { orders, updateOrderStatus, getVehicle, technicians } = useWorkshop();
+  const { orders, updateOrderStatus, getVehicle, technicians, getClient } = useWorkshop();
+  const navigate = useNavigate();
   const [filterTech, setFilterTech] = useState("");
   const [searchPlate, setSearchPlate] = useState("");
 
@@ -39,19 +41,18 @@ export default function KanbanPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <TooltipProvider delayDuration={400}>
+      <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">Tablero de Control</h1>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent><p className="max-w-xs">Gestiona el flujo visualmente. Arrastra tarjetas para cambiar estados y usa el check para finalizar servicios.</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent><p className="max-w-xs">Gestiona el flujo visualmente. Arrastra tarjetas para cambiar estados y usa el check para finalizar servicios.</p></TooltipContent>
+            </Tooltip>
           </div>
         </div>
         
@@ -99,16 +100,20 @@ export default function KanbanPage() {
                       >
                         {columnOrders.map((order, index) => {
                           const vehicle = getVehicle(order.vehicleId);
+                          const client = getClient(order.clientId);
                           return (
                             <Draggable key={order.id} draggableId={order.id} index={index}>
                               {(provided, snapshot) => (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
                                 <Card
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`cursor-grab active:cursor-grabbing ${
+                                  className={`cursor-pointer hover:border-primary/50 transition-all active:scale-[0.98] ${
                                     snapshot.isDragging ? "shadow-lg ring-2 ring-primary" : ""
                                   }`}
+                                  onClick={() => navigate(`/ordenes/${order.id}`)}
                                 >
                                   <CardContent className="p-3 space-y-2">
                                     <div className="flex items-center justify-between">
@@ -153,6 +158,45 @@ export default function KanbanPage() {
                                     </div>
                                   </CardContent>
                                 </Card>
+                                  </TooltipTrigger>
+                                  <TooltipContent 
+                                    side="right" 
+                                    sideOffset={10}
+                                    className="hidden lg:block w-80 p-0 overflow-hidden rounded-2xl border-primary/20 shadow-2xl bg-popover/95 backdrop-blur-xl animate-in fade-in zoom-in duration-200"
+                                  >
+                                    <div className="bg-primary/10 p-3 border-b border-primary/10 flex justify-between items-center">
+                                      <span className="font-mono font-black text-primary tracking-tighter">{vehicle?.plate}</span>
+                                      <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-background/50 border-primary/20">
+                                        {STATUS_LABELS[status]}
+                                      </Badge>
+                                    </div>
+                                    <div className="p-4 space-y-4">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                          <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-50">Cliente</p>
+                                          <p className="text-xs font-bold truncate">{client?.name || 'S/N'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-50">Vehículo</p>
+                                          <p className="text-xs font-medium truncate">{vehicle?.brand} {vehicle?.model}</p>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest opacity-50">Falla Reportada</p>
+                                        <p className="text-[11px] leading-relaxed italic text-muted-foreground border-l-2 border-primary/20 pl-2">
+                                          {order.faultDescription || "Sin descripción"}
+                                        </p>
+                                      </div>
+                                      <div className="pt-2 border-t border-border/50 flex justify-between items-center">
+                                        <div className="flex items-center gap-1.5">
+                                          <Package className="h-3 w-3 text-primary/60" />
+                                          <span className="text-[10px] font-bold">{order.usedParts?.length || 0} repuestos</span>
+                                        </div>
+                                        <span className="text-[9px] font-medium text-muted-foreground italic">ID: {order.id.slice(0,8).toUpperCase()}</span>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                             </Draggable>
                           );
@@ -168,5 +212,6 @@ export default function KanbanPage() {
         </div>
       </DragDropContext>
     </div>
+    </TooltipProvider>
   );
 }

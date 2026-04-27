@@ -60,6 +60,9 @@ function mapStatusFromDB(status: string): OrderStatus {
 }
 
 function normalizeOrder(item: any): Order {
+  // Función auxiliar para convertir UTC string a YYYY-MM-DD local
+  const toLocalISO = (iso?: string) => iso ? new Date(iso).toLocaleDateString('en-CA') : undefined;
+
   return {
     ...item,
     status: mapStatusFromDB(item.status),
@@ -68,8 +71,8 @@ function normalizeOrder(item: any): Order {
     technicianId: item.technician_id,
     technicianName: item.technician?.full_name || "Sin asignar",
     faultDescription: item.fault_description,
-    createdAt: item.created_at?.split('T')[0],
-    updatedAt: item.updated_at?.split('T')[0],
+    createdAt: toLocalISO(item.created_at),
+    updatedAt: toLocalISO(item.updated_at),
     notes: item.notes || [], // Garantizamos que notes sea siempre un array
     usedParts: (item.order_items || []).map((p: any) => ({
       id: p.id,
@@ -92,7 +95,7 @@ function normalizeInvoice(item: any): Invoice {
     tax: Number(item.tax_usd),
     total: Number(item.total_usd),
     laborCost: Number(item.subtotal_usd) - partsTotal,
-    createdAt: item.created_at?.split('T')[0],
+    createdAt: item.created_at ? new Date(item.created_at).toLocaleDateString('en-CA') : undefined,
     items: (item.service_orders?.order_items || []).map((p: any) => ({
       description: p.description,
       quantity: p.quantity,

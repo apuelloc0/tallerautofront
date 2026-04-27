@@ -25,6 +25,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 import SaasAdminPage from "./pages/SaasAdminPage";
 import SettingsPage from "./pages/SettingsPage";
+import CalendarPage from "./pages/CalendarPage";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["admin", "recepcionista", "super_admin"]}>
                     <HomeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/calendario"
+                element={
+                  <ProtectedRoute allowedRoles={["admin", "recepcionista"]}>
+                    <Layout><CalendarPage /></Layout>
                   </ProtectedRoute>
                 }
               />

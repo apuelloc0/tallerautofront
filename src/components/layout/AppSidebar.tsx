@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Columns3,
+  Calendar,
   ClipboardList,
   Package,
   Receipt,
@@ -43,10 +44,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Calendario", url: "/calendario", icon: Calendar },
   { title: "Tablero de Control", url: "/kanban", icon: Columns3 },
   { title: "Órdenes", url: "/ordenes", icon: ClipboardList },
   { title: "Inventario", url: "/inventario", icon: Package },
-  { title: "Facturación", url: "/facturacion", icon: Receipt },
+  // Módulo de Facturación oculto temporalmente
+  // { title: "Facturación", url: "/facturacion", icon: Receipt },
   { title: "Clientes", url: "/clientes", icon: Users },
 ];
 

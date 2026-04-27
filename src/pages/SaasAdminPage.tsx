@@ -638,12 +638,16 @@ export default function SaasAdminPage() {
                 <p><span className="font-medium">Dirección:</span> {selectedWorkshopDetails.address || 'N/A'}</p>
                 <p><span className="font-medium">Teléfono:</span> {selectedWorkshopDetails.phone || 'N/A'}</p>
                 <p><span className="font-medium">IVA:</span> {selectedWorkshopDetails.tax_rate}%</p>
-                <p><span className="font-medium">Plan:</span> <Badge variant="secondary">{selectedWorkshopDetails.subscription_plan?.toUpperCase()}</Badge></p>
-                <p><span className="font-medium">Estado de Pago:</span> 
+                <div className="flex items-center gap-2 py-1">
+                  <span className="font-medium">Plan:</span>
+                  <Badge variant="secondary">{selectedWorkshopDetails.subscription_plan?.toUpperCase()}</Badge>
+                </div>
+                <div className="flex items-center gap-2 py-1">
+                  <span className="font-medium">Estado de Pago:</span>
                   <Badge variant={selectedWorkshopDetails.payment_status === 'active' ? 'default' : 'destructive'} className={selectedWorkshopDetails.payment_status === 'active' ? 'bg-green-500' : 'bg-red-500'}>
                     {selectedWorkshopDetails.payment_status?.toUpperCase()}
                   </Badge>
-                </p>
+                </div>
                 <p><span className="font-medium">Registrado:</span> {new Date(selectedWorkshopDetails.created_at).toLocaleDateString()}</p>
               </div>
               {selectedWorkshopDetails.owner && (

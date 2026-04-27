@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -23,13 +24,21 @@ export default function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editPart, setEditPart] = useState<Part | null>(null);
-  const [form, setForm] = useState({ code: "", name: "", category: "", stock: 0, minStock: 5, price: 0 });
+  const [form, setForm] = useState({ code: "", name: "", category: "", stock: 0, minStock: 5, price: 0, currency: "COP" });
 
-  // Formateador para Pesos Colombianos
-  const formatCOP = (value: number) => 
-    new Intl.NumberFormat('es-CO', { 
+  // Formateador dinámico según la moneda para la tabla y visualización
+  const formatPrice = (value: number, currency: string = "COP") => {
+    if (currency === "USD") {
+      const formatted = new Intl.NumberFormat('en-US', { 
+        style: 'currency', currency: 'USD' 
+      }).format(value);
+      return `USD ${formatted}`;
+    }
+    const formatted = new Intl.NumberFormat('es-CO', { 
       style: 'currency', currency: 'COP', maximumFractionDigits: 0 
     }).format(value);
+    return `COP ${formatted}`;
+  };
 
   // Efecto para capturar búsquedas desde el Dashboard
   useEffect(() => {
@@ -46,13 +55,13 @@ export default function InventoryPage() {
 
   const openNew = () => {
     setEditPart(null);
-    setForm({ code: "", name: "", category: "", stock: 0, minStock: 5, price: 0 });
+    setForm({ code: "", name: "", category: "", stock: 0, minStock: 5, price: 0, currency: "COP" });
     setDialogOpen(true);
   };
 
   const openEdit = (part: Part) => {
     setEditPart(part);
-    setForm({ code: part.code, name: part.name, category: part.category, stock: part.stock, minStock: part.minStock, price: part.price });
+    setForm({ code: part.code, name: part.name, category: part.category, stock: part.stock, minStock: part.minStock, price: part.price, currency: (part as any).currency || "COP" });
     setDialogOpen(true);
   };
 
@@ -115,14 +124,17 @@ export default function InventoryPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead className="hidden md:table-cell">Categoría</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead className="hidden md:table-cell">Precio</TableHead>
+                <TableHead className="hidden md:table-cell">Precio Unit.</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((part) => {
                 const isLow = part.stock <= part.minStock;
-                const stockPercent = Math.min((part.stock / (part.minStock * 3)) * 100, 100);
+                // Nueva fórmula: Stock actual sobre el mínimo. 
+                // Si el stock es igual o mayor al mínimo, la barra se muestra llena (100%).
+                // Si es menor, muestra proporcionalmente qué tanto falta para llegar al mínimo.
+                const stockPercent = part.minStock > 0 ? Math.min((part.stock / part.minStock) * 100, 100) : 100;
                 return (
                   <TableRow key={part.id} className="cursor-pointer" onClick={() => openEdit(part)}>
                     <TableCell className="font-mono text-xs">{part.code}</TableCell>
@@ -136,7 +148,9 @@ export default function InventoryPage() {
                         <span className="text-sm">{part.stock}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{formatCOP(part.price)}</TableCell>
+                    <TableCell className="hidden md:table-cell font-medium">
+                      {formatPrice(part.price, (part as any).currency)}
+                    </TableCell>
                     <TableCell>
                       {isLow ? (
                         <Badge variant="destructive" className="gap-1">
@@ -158,6 +172,7 @@ export default function InventoryPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editPart ? "Editar Repuesto" : "Nuevo Repuesto"}</DialogTitle>
+            <DialogDescription>Gestiona la información técnica y existencias del repuesto en el almacén.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
@@ -179,7 +194,7 @@ export default function InventoryPage() {
               <Label>Nombre</Label>
               <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>Stock</Label>
                 <Input 
@@ -201,14 +216,36 @@ export default function InventoryPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Precio (COP)</Label>
-                <Input 
-                  type="number" 
-                  value={form.price} 
-                  onChange={(e) => setForm((f) => ({ ...f, price: Math.max(0, Number(e.target.value)) }))} 
-                  onFocus={(e) => setTimeout(() => e.target.select(), 0)}
-                  min={0}
-                />
+                <Label>Moneda</Label>
+                <Select value={form.currency} onValueChange={(v) => setForm((f) => ({ ...f, currency: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COP">COP ($)</SelectItem>
+                    <SelectItem value="USD">USD (US$)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Precio ({form.currency})</Label>
+                <div className="relative">
+                  <Input 
+                    type="text" 
+                    value={form.price === 0 ? "" : (form.currency === "COP" ? new Intl.NumberFormat('es-CO').format(form.price) : form.price)}
+                    onChange={(e) => {
+                      const rawValue = e.target.value.replace(/\D/g, "");
+                      setForm(f => ({ ...f, price: rawValue ? parseInt(rawValue, 10) : 0 }));
+                    }} 
+                    className={cn(
+                      "font-mono font-bold",
+                      form.currency === "COP" ? "text-primary" : "text-green-600"
+                    )}
+                  />
+                  {form.price > 0 && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] opacity-40 font-bold uppercase">
+                      {form.currency}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

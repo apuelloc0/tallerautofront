@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               name: data.user.full_name,
               join_code_tech: data.user.join_code_tech,
               join_code_recep: data.user.join_code_recep,
-              workshop_id: data.user.workshop_id
+              workshop_id: data.user.workshop_id,
+              workshop_name: data.user.workshop_name || user.workshop_name
             };
             localStorage.setItem("workshop_user", JSON.stringify(updatedData));
             setUser(updatedData);
@@ -78,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: mapRole(rawUser.role),
           workshop_id: rawUser.workshop_id,
           join_code_tech: rawUser.join_code_tech,
-          join_code_recep: rawUser.join_code_recep
+          join_code_recep: rawUser.join_code_recep,
+          workshop_name: rawUser.workshop_name
         };
 
         // Guardamos el token para el interceptor de Axios

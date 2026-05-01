@@ -21,7 +21,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [copiedTech, setCopiedTech] = useState(false);
   const [copiedRecep, setCopiedRecep] = useState(false);
-  const { getVehicle, getClient, orders, technicians, parts } = useWorkshop();
+  const { getVehicle, getClient, orders, technicians, parts, users: allUsers } = useWorkshop();
   const queryClient = useQueryClient();
 
   const { data: stats, isLoading, isRefetching } = useQuery({
@@ -131,6 +131,11 @@ export default function Dashboard() {
   );
   const availableTechsCount = technicians.filter(t => !busyTechIds.has(t.id)).length;
 
+  // Calculamos el cupo de empleados (excluyendo administradores)
+  const staffCount = useMemo(() => 
+    allUsers.filter(u => u.role?.toLowerCase() !== 'administrador' && u.role?.toLowerCase() !== 'admin').length
+  , [allUsers]);
+
   const kpis = [
     { title: "Vehículos en Taller", value: vehiclesInWorkshop.length, icon: Car, color: "text-primary" },
     { title: "Listos para Entrega", value: readyForDelivery.length, icon: ClipboardList, color: "text-primary" },
@@ -147,7 +152,12 @@ export default function Dashboard() {
       {/* Header de Bienvenida */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-black tracking-tight">Hola, {user?.name.split(' ')[0]}</h1>
+          <h1 className="text-2xl font-black tracking-tight">
+            Hola, {user?.name.split(' ')[0]}
+            {user?.workshop_name && (
+              <span className="text-primary ml-2">— {user.workshop_name}</span>
+            )}
+          </h1>
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-70 flex items-center gap-2">
             <CalendarIcon className="h-3 w-3" /> {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
@@ -165,31 +175,37 @@ export default function Dashboard() {
 
       {/* Sección de Códigos (Sutil y moderna) */}
       {(user?.role?.toLowerCase() === 'administrador' || user?.role?.toLowerCase() === 'admin') && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-primary/10 border border-primary/10 rounded-[1.5rem] p-3 flex flex-col justify-between group transition-all active:scale-95">
-            <div className="flex justify-between items-start">
-              <span className="text-[10px] font-black uppercase text-primary/60 tracking-tighter">Mecánicos</span>
-              <UserPlus className="h-3 w-3 text-primary/40" />
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-primary/10 border border-primary/10 rounded-[1.5rem] p-3 flex flex-col justify-between group transition-all active:scale-95">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-black uppercase text-primary/60 tracking-tighter">Mecánicos</span>
+                <UserPlus className="h-3 w-3 text-primary/40" />
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <code className="text-xs font-mono font-bold">{user.join_code_tech || '—'}</code>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.join_code_tech!, 'tech')}>
+                  {copiedTech ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 opacity-40" />}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <code className="text-xs font-mono font-bold">{user.join_code_tech || '—'}</code>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.join_code_tech!, 'tech')}>
-                {copiedTech ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 opacity-40" />}
-              </Button>
+            <div className="bg-orange-500/10 border border-orange-500/10 rounded-[1.5rem] p-3 flex flex-col justify-between group transition-all active:scale-95">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-black uppercase text-orange-600/60 tracking-tighter">Recepción</span>
+                <Users className="h-3 w-3 text-orange-600/40" />
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <code className="text-xs font-mono font-bold">{user.join_code_recep || '—'}</code>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.join_code_recep!, 'recep')}>
+                  {copiedRecep ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 opacity-40" />}
+                </Button>
+              </div>
             </div>
           </div>
-          <div className="bg-orange-500/10 border border-orange-500/10 rounded-[1.5rem] p-3 flex flex-col justify-between group transition-all active:scale-95">
-            <div className="flex justify-between items-start">
-              <span className="text-[10px] font-black uppercase text-orange-600/60 tracking-tighter">Recepción</span>
-              <Users className="h-3 w-3 text-orange-600/40" />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <code className="text-xs font-mono font-bold">{user.join_code_recep || '—'}</code>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.join_code_recep!, 'recep')}>
-                {copiedRecep ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3 opacity-40" />}
-              </Button>
-            </div>
-          </div>
+          <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest px-1 flex items-center gap-1.5">
+            <Info className="h-3 w-3" />
+            Cupo del taller: {staffCount} de 15 empleados registrados
+          </p>
         </div>
       )}
 

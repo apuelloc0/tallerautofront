@@ -61,11 +61,20 @@ export default function StaffPage() {
   const pendingUsers = otherUsers.filter(u => u.active !== true);
   const activeUsers = otherUsers.filter(u => u.active === true);
 
+  const staffCount = users.filter(u => 
+    u.role?.toLowerCase() !== 'administrador' && u.role?.toLowerCase() !== 'admin'
+  ).length;
+
+  const MAX_USERS = 15;
+
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">Gestión de Personal</h1>
+          <Badge variant="outline" className="rounded-lg border-primary/20 bg-primary/5 text-primary font-bold">
+            {staffCount} / {MAX_USERS} Empleados
+          </Badge>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

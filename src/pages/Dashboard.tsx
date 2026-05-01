@@ -97,6 +97,11 @@ export default function Dashboard() {
 
   const hasWeeklyData = weeklyProductivityData.some(d => d.completadas > 0);
 
+  // Calculamos el cupo de empleados (excluyendo administradores) antes del return condicional
+  const staffCount = useMemo(() => 
+    allUsers.filter(u => u.role?.toLowerCase() !== 'administrador' && u.role?.toLowerCase() !== 'admin').length
+  , [allUsers]);
+
   const copyCode = (code: string, type: 'tech' | 'recep') => {
     navigator.clipboard.writeText(code);
     if (type === 'tech') {
@@ -131,11 +136,6 @@ export default function Dashboard() {
   );
   const availableTechsCount = technicians.filter(t => !busyTechIds.has(t.id)).length;
 
-  // Calculamos el cupo de empleados (excluyendo administradores)
-  const staffCount = useMemo(() => 
-    allUsers.filter(u => u.role?.toLowerCase() !== 'administrador' && u.role?.toLowerCase() !== 'admin').length
-  , [allUsers]);
-
   const kpis = [
     { title: "Vehículos en Taller", value: vehiclesInWorkshop.length, icon: Car, color: "text-primary" },
     { title: "Listos para Entrega", value: readyForDelivery.length, icon: ClipboardList, color: "text-primary" },
@@ -162,15 +162,17 @@ export default function Dashboard() {
             <CalendarIcon className="h-3 w-3" /> {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="rounded-full h-10 w-10 border-primary/20 bg-background/50 backdrop-blur-sm shadow-sm" 
-          onClick={() => queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })}
-          disabled={isRefetching}
-        >
-          <RefreshCw className={`h-4 w-4 text-primary ${isRefetching ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="rounded-full h-10 w-10 border-primary/20 bg-background/50 backdrop-blur-sm shadow-sm" 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })}
+            disabled={isRefetching}
+          >
+            <RefreshCw className={`h-4 w-4 text-primary ${isRefetching ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Sección de Códigos (Sutil y moderna) */}

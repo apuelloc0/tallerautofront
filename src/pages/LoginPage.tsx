@@ -26,10 +26,20 @@ export default function LoginPage() {
     let widgetId: string | null = null;
 
     const renderWidget = () => {
+      // Solo renderizar el widget en producción para evitar errores de dominio en localhost
+      if (!import.meta.env.PROD) return;
+
+      const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+      
+      if (!siteKey) {
+        console.error("❌ [SECURITY] Falta VITE_TURNSTILE_SITE_KEY en el archivo .env");
+        return;
+      }
+
       if ((window as any).turnstile && !widgetId) {
         try {
           widgetId = (window as any).turnstile.render("#turnstile-container-login", {
-            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+            sitekey: siteKey,
             theme: 'light',
             callback: (token: string) => setCaptchaToken(token),
             'expired-callback': () => setCaptchaToken(null),

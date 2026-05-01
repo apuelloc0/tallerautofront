@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,9 +24,26 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [securityQuestion, setSecurityQuestion] = useState("");
   const [securityAnswer, setSecurityAnswer] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const { register, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Inicializar Turnstile cuando el componente se monta
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if ((window as any).turnstile) {
+        (window as any).turnstile.render("#turnstile-container", {
+          sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+          callback: (token: string) => {
+            setCaptchaToken(token);
+          },
+        });
+        clearInterval(interval);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +75,11 @@ export default function RegisterPage() {
       setError("La pregunta de seguridad es necesaria para recuperar tu cuenta.");
       return;
     }
+    
+    if (!captchaToken && import.meta.env.PROD) {
+      setError("Por favor completa la verificación de seguridad (Captcha).");
+      return;
+    }
 
     try {
       // Para dueños, el rol es ADMINISTRADOR por defecto. Para empleados, el backend lo determina.
@@ -71,6 +93,7 @@ export default function RegisterPage() {
         workshop_name: regType === "owner" ? workshopName : undefined,
         join_code: regType === "employee" ? workshopIdCode : undefined,
         license_code: regType === "owner" ? ownerKey : undefined,
+        captchaToken: captchaToken, // Enviamos el token al backend
         security_questions: [{ question: securityQuestion, answer: securityAnswer }]
       });
 
@@ -261,6 +284,11 @@ export default function RegisterPage() {
                     autoComplete="new-password"
                   />
                 </div>
+              </div>
+
+              {/* Widget de Turnstile */}
+              <div className="flex justify-center py-2">
+                <div id="turnstile-container"></div>
               </div>
 
               <Button type="submit" className="w-full h-10 rounded-xl text-sm font-bold shadow-lg shadow-primary/20" disabled={isLoading}>

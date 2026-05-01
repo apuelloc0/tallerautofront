@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,11 +21,40 @@ export default function LoginPage() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
+  // Inicializar Turnstile cuando el componente se monta
+  useEffect(() => {
+    let widgetId: string | null = null;
+
+    const renderWidget = () => {
+      if ((window as any).turnstile && !widgetId) {
+        try {
+          widgetId = (window as any).turnstile.render("#turnstile-container-login", {
+            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+            theme: 'light',
+            callback: (token: string) => setCaptchaToken(token),
+            'expired-callback': () => setCaptchaToken(null),
+            'error-callback': () => setCaptchaToken(null),
+          });
+        } catch (e) {
+          console.warn("Turnstile render retry...", e);
+        }
+      }
+    };
+
+    const timer = setInterval(renderWidget, 1000);
+    renderWidget(); // Intento inmediato
+    return () => clearInterval(timer);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     try {
-      await login(username, password);
+      if (!captchaToken && import.meta.env.PROD) {
+        setError("Por favor completa la verificación de seguridad (Captcha).");
+        return;
+      }
+      await login(username, password, captchaToken);
       toast({ title: "Bienvenido", description: "Sesión iniciada correctamente." });
       navigate("/", { replace: true }); // Siempre redirigir al Dashboard después de iniciar sesión
     } catch (err: any) {
@@ -106,6 +136,11 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+              </div>
+
+              {/* Widget de Turnstile */}
+              <div className="flex justify-center py-2">
+                <div id="turnstile-container-login"></div>
               </div>
 
               <Button type="submit" className="w-full h-12 rounded-2xl text-base font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all" disabled={isLoading}>

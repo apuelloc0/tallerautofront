@@ -31,18 +31,27 @@ export default function RegisterPage() {
 
   // Inicializar Turnstile cuando el componente se monta
   useEffect(() => {
-    const interval = setInterval(() => {
-      if ((window as any).turnstile) {
-        (window as any).turnstile.render("#turnstile-container", {
-          sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-          callback: (token: string) => {
-            setCaptchaToken(token);
-          },
-        });
-        clearInterval(interval);
+    let widgetId: string | null = null;
+
+    const renderWidget = () => {
+      if ((window as any).turnstile && !widgetId) {
+        try {
+          widgetId = (window as any).turnstile.render("#turnstile-container", {
+            sitekey: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+            theme: 'light',
+            callback: (token: string) => setCaptchaToken(token),
+            'expired-callback': () => setCaptchaToken(null),
+            'error-callback': () => setCaptchaToken(null),
+          });
+        } catch (e) {
+          console.warn("Turnstile render retry...", e);
+        }
       }
-    }, 500);
-    return () => clearInterval(interval);
+    };
+
+    const timer = setInterval(renderWidget, 1000);
+    renderWidget(); // Intento inmediato
+    return () => clearInterval(timer);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

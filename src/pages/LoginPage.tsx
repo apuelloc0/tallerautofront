@@ -66,7 +66,7 @@ export default function LoginPage() {
       }
       await login(username, password, captchaToken);
       toast({ title: "Bienvenido", description: "Sesión iniciada correctamente." });
-      navigate("/", { replace: true }); // Siempre redirigir al Dashboard después de iniciar sesión
+      navigate("/dashboard", { replace: true }); // Redirigir a la lógica de selección de dashboard
     } catch (err: any) {
       setError(err.message);
     }

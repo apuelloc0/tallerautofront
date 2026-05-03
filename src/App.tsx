@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/layout/Layout";
 import { MobileNavbar } from "@/components/layout/MobileNavbar";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import KanbanPage from "./pages/KanbanPage";
 import OrdersPage from "./pages/OrdersPage";
@@ -64,22 +65,25 @@ const App = () => (
               <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+              {/* Public Landing Page */}
+              <Route path="/" element={<Index />} />
+
+              {/* Authenticated Home / Dashboard Selector */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={["admin", "recepcionista", "super_admin", "tecnico"]}>
+                    <HomeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Technician view — no sidebar, tecnico+ role */}
               <Route
                 path="/tecnico"
                 element={
                   <ProtectedRoute allowedRoles={["admin", "tecnico"]}>
                     <TechnicianPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Admin & Recepcionista routes with sidebar */}
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute allowedRoles={["admin", "recepcionista", "super_admin"]}>
-                    <HomeDashboard />
                   </ProtectedRoute>
                 }
               />

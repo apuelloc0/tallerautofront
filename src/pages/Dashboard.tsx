@@ -411,7 +411,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/5">
+              <div className="h-[300px] p-4 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/5">
                 <BarChart3 className="h-10 w-10 mb-2 opacity-20" />
                 <p className="text-sm font-medium">Sin actividad reciente</p>
                 <p className="text-xs opacity-70 italic">El rendimiento por día aparecerá aquí a medida que entregues vehículos</p>

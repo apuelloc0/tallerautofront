@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, LayoutDashboard, Wrench, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import jeepImage from "../assets/jeep2.webp";
+import pistonLogo from "../assets/piston.webp";
 
 const Index = () => {
   const { user } = useAuth();
@@ -51,13 +52,13 @@ const Index = () => {
           {/* Logo y Cabecera */}
           <div className="flex flex-col items-center gap-6">
             <img 
-              src="/taller.png" 
-              alt="AutoTaller Logo" 
-              className="w-32 md:w-48 object-contain drop-shadow-2xl animate-pulse" 
+              src={pistonLogo} 
+              alt="Pistn Logo" 
+              className="w-24 md:w-48 object-contain drop-shadow-2xl animate-pulse" 
             />
             <div className="space-y-1">
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white italic">
-                Auto<span className="text-primary">Taller</span>
+                Pistn
               </h1>
               <p className="text-sm md:text-lg text-orange-500/80 font-bold uppercase tracking-[0.3em]">
                 Gestión Profesional de Patio

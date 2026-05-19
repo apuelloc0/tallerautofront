@@ -27,6 +27,8 @@ import NotFound from "./pages/NotFound";
 import SaasAdminPage from "./pages/SaasAdminPage";
 import SettingsPage from "./pages/SettingsPage";
 import CalendarPage from "./pages/CalendarPage";
+import Terminos from "./pages/Terminos";
+import Privacidad from "./pages/Privacidad";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +66,8 @@ const App = () => (
               <Route path="/registro" element={<RegisterPage />} />
               <Route path="/recuperar-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/terminos" element={<Terminos />} />
+              <Route path="/privacidad" element={<Privacidad />} />
 
               {/* Public Landing Page */}
               <Route path="/" element={<Index />} />

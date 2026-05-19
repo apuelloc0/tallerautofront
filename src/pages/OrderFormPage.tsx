@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useWorkshop } from "@/context/WorkshopContext";
 import { STATUS_LABELS, OrderStatus } from "@/types/workshop";
@@ -24,6 +25,7 @@ export default function OrderFormPage() {
   const isEditing = !!id && id !== "nueva";
   const existingOrder = isEditing ? getOrder(id) : null;
   const isFinished = existingOrder?.status === 'entregado';
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const [form, setForm] = useState({
     vehicle_id: (existingOrder as any)?.vehicle_id || "",
@@ -43,7 +45,39 @@ export default function OrderFormPage() {
     images: (existingOrder as any)?.images || []
   });
 
+  // Resetear el estado de inicialización si cambia el ID (al navegar entre órdenes)
+  useEffect(() => {
+    setIsInitialized(false);
+  }, [id]);
+
+  // EFECTO CRÍTICO: Sincronizar el formulario SOLO UNA VEZ cuando los datos de la orden carguen
+  useEffect(() => {
+    if (existingOrder && !isInitialized) {
+      setForm({
+        vehicle_id: (existingOrder as any).vehicle_id || (existingOrder as any).vehicleId || "",
+        client_id: (existingOrder as any).client_id || (existingOrder as any).clientId || "",
+        technician_id: (existingOrder as any).technician_id || (existingOrder as any).technicianId || "",
+        fault_description: (existingOrder as any).fault_description || (existingOrder as any).faultDescription || "",
+        diagnosis: existingOrder.diagnosis || "",
+        status: existingOrder.status || ("ingresado" as OrderStatus),
+        fuel_level: (existingOrder as any).fuel_level || (existingOrder as any).fuelLevel || "1/4",
+        reception_checklist: (existingOrder as any).reception_checklist || (existingOrder as any).receptionChecklist || {
+          spareTire: false,
+          jack: false,
+          tools: false,
+          radio: true,
+          floorMats: true
+        },
+        images: (existingOrder as any).images || []
+      });
+      setIsInitialized(true);
+    }
+  }, [existingOrder, isInitialized]);
+
   const [isUploading, setIsUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<{file: File, localUrl: string}[]>([]);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -67,26 +101,50 @@ export default function OrderFormPage() {
 
       const compressedFile = await imageCompression(file, options);
 
-      const formData = new FormData();
-      formData.append("image", compressedFile); 
-
-      // Apuntamos al endpoint correcto en el controlador de órdenes
-      const { data } = await api.post("/service-orders/upload-image", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-
-      if (data.ok) {
-        setForm(f => ({ ...f, images: [...f.images, data.url] }));
-        toast.success("Foto subida correctamente");
-      }
+      const localUrl = URL.createObjectURL(compressedFile);
+      
+      // Guardamos el archivo y la URL local en el estado temporal
+      setPendingFiles(prev => [...prev, { file: compressedFile, localUrl }]);
+      setForm(f => ({ ...f, images: [...f.images, localUrl] }));
+      
     } catch (error) {
-      toast.error("No se pudo subir la imagen");
+      toast.error("Error al procesar la imagen");
     } finally {
       setIsUploading(false);
     }
   };
 
+  // Función para resolver la URL de la imagen (SaaS Ready)
+  const resolveImageUrl = (url: string) => {
+    if (!url) return "";
+    
+    if (url.startsWith("blob:")) return url;
+    if (url.startsWith("http")) {
+      return url.replace('/service-orders/', '/peritaje/');
+    }
+    
+    // Priorizamos la variable de entorno, si no, usamos el ID directo de tu proyecto
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://wdasyrswnjslifbxhsbj.supabase.co";
+    
+    const cleanBase = supabaseUrl.endsWith('/') ? supabaseUrl.slice(0, -1) : supabaseUrl;
+    // Añadimos un pequeño truco para evitar doble slash y forzar refresco si es necesario
+    const finalUrl = `${cleanBase}/storage/v1/object/public/peritaje/${url.startsWith('/') ? url.slice(1) : url}`;
+
+    return finalUrl;
+  };
+
   const removeImage = (index: number) => {
+    const imageUrl = form.images[index];
+    
+    if (imageUrl) {
+      if (imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imageUrl);
+        setPendingFiles(prev => prev.filter(p => p.localUrl !== imageUrl));
+      } else {
+        // Marcamos para borrado físico en Supabase al presionar "Guardar"
+        setImagesToDelete(prev => [...prev, imageUrl]);
+      }
+    }
     setForm(f => ({ ...f, images: f.images.filter((_: any, i: number) => i !== index) }));
   };
 
@@ -98,11 +156,47 @@ export default function OrderFormPage() {
     
     setIsSaving(true);
     try {
+      // 1. Subir archivos pendientes antes de guardar la orden
+      const finalImages = [...form.images];
+      
+      for (let i = 0; i < finalImages.length; i++) {
+        const url = finalImages[i];
+        if (url.startsWith('blob:')) {
+          const pending = pendingFiles.find(p => p.localUrl === url);
+          if (pending) {
+            const formData = new FormData();
+            // Obtenemos la extensión real del archivo comprimido (ej: webp, jpeg, png)
+            const extension = pending.file.type.split('/')[1] || 'jpg';
+            const fileName = `photo_${Date.now()}.${extension}`;
+            
+            formData.append("image", pending.file, fileName);
+            
+            const { data } = await api.post("/service-orders/upload-image", formData, {
+              headers: { "Content-Type": "multipart/form-data" }
+            });
+            
+            if (data.ok) {
+              finalImages[i] = data.url;
+              URL.revokeObjectURL(url); // Limpiar memoria
+            }
+          }
+        }
+      }
+
+      // 2. Eliminar físicamente las fotos descartadas del Storage
+      if (imagesToDelete.length > 0) {
+        for (const imageUrl of imagesToDelete) {
+          await api.post("/service-orders/delete-image", { url: imageUrl });
+        }
+      }
+
+      const finalForm = { ...form, images: finalImages };
+
       if (isEditing) {
-        await updateOrder(id, form);
+        await updateOrder(id, finalForm);
         toast.success("Orden actualizada");
       } else {
-        await createOrder(form);
+        await createOrder(finalForm);
         toast.success("Orden creada correctamente");
       }
       navigate("/ordenes");
@@ -133,7 +227,13 @@ export default function OrderFormPage() {
             <Select value={form.client_id} onValueChange={(v) => setForm((f) => ({ ...f, client_id: v, vehicle_id: "" }))} disabled={isFinished}>
               <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
               <SelectContent>
-                {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                {clients.length === 0 ? (
+                  <SelectItem value="none" disabled className="text-muted-foreground italic text-xs flex justify-center py-4 text-center pl-2 pr-2 w-full">
+                    No hay clientes registrados. Vaya al módulo de Clientes.
+                  </SelectItem>
+                ) : (
+                  clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -142,9 +242,23 @@ export default function OrderFormPage() {
             <Select value={form.vehicle_id} onValueChange={(v) => setForm((f) => ({ ...f, vehicle_id: v }))} disabled={isFinished}>
               <SelectTrigger><SelectValue placeholder="Seleccionar vehículo" /></SelectTrigger>
               <SelectContent>
-                {clientVehicles.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.plate} — {v.brand} {v.model}</SelectItem>
-                ))}
+                {clients.length === 0 ? (
+                  <SelectItem value="none" disabled className="text-muted-foreground italic text-xs flex justify-center py-4 text-center pl-2 pr-2 w-full">
+                    Debe registrar un cliente primero
+                  </SelectItem>
+                ) : !form.client_id ? (
+                  <SelectItem value="none" disabled className="text-muted-foreground italic text-xs flex justify-center py-4 text-center pl-2 pr-2 w-full">
+                    Debe seleccionar un cliente primero
+                  </SelectItem>
+                ) : clientVehicles.length === 0 ? (
+                  <SelectItem value="none" disabled className="text-muted-foreground italic text-xs flex justify-center py-4 text-center pl-2 pr-2 w-full">
+                    El cliente seleccionado no tiene vehículos
+                  </SelectItem>
+                ) : (
+                  clientVehicles.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.plate} — {v.brand} {v.model}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -253,9 +367,19 @@ export default function OrderFormPage() {
           <div className="space-y-2">
             <Label>Fotos de Peritaje</Label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {form.images.map((url: string, index: number) => (
-                <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border bg-muted">
-                  <img src={url} alt="Peritaje" className="object-cover w-full h-full" />
+              {form.images.filter(Boolean).map((url: string, index: number) => (
+                <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border bg-muted cursor-zoom-in">
+                  <img 
+                    src={resolveImageUrl(url)} 
+                    alt="Peritaje" 
+                    className="object-cover w-full h-full"
+                    onClick={() => setPreviewImage(resolveImageUrl(url))}
+                    onError={(e) => {
+                      console.error("❌ Error cargando imagen en Orden:", e.currentTarget.src);
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://placehold.co/400x400?text=Configurar+Bucket+Publico";
+                    }}
+                  />
                   <button 
                     onClick={() => !isFinished && removeImage(index)}
                     className={cn("absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity", isFinished && "hidden")}
@@ -309,6 +433,18 @@ export default function OrderFormPage() {
           </>
         )}
       </div>
+
+      {/* Modal de Vista Previa de Imagen */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img src={resolveImageUrl(previewImage || "")} className="max-w-full max-h-[85vh] object-contain rounded-lg" alt="Vista previa" />
+            <Button variant="secondary" size="icon" className="absolute top-2 right-2 rounded-full opacity-70" onClick={() => setPreviewImage(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

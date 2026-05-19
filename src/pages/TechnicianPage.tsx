@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import pistonLogo from "@/assets/piston.webp";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,8 +37,10 @@ export default function TechnicianPage() {
   const [selectedPartId, setSelectedPartId] = useState("");
   const [partQty, setPartQty] = useState(1);
   const [isFinishing, setIsFinishing] = useState<string | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<{orderId: string, file: File, localUrl: string} | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleImageUpload = async (orderId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -50,23 +53,63 @@ export default function TechnicianPage() {
     }
 
     const file = files[0];
-    setIsUploading(orderId);
-
     try {
       const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1280, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
+      const localUrl = URL.createObjectURL(compressedFile);
+      setPendingUpload({ orderId, file: compressedFile, localUrl });
+    } catch (error) {
+      toast.error("Error al procesar imagen");
+    }
+  };
 
+  const resolveImageUrl = (url: string) => {
+    if (!url || typeof url !== 'string') return "";
+    
+    if (url.startsWith("blob:")) return url;
+    
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://wdasyrswnjslifbxhsbj.supabase.co";
+    const cleanBase = supabaseUrl.endsWith('/') ? supabaseUrl.slice(0, -1) : supabaseUrl;
+
+    if (url.startsWith("http")) {
+      if (url.includes('/service-orders/')) return url.replace('/service-orders/', '/peritaje/');
+      if (url.includes('/uploads/')) return `${cleanBase}/storage/v1/object/public/peritaje/${url.split('/').pop()}`;
+      return url;
+    }
+    
+    const path = url.startsWith('/') ? url.slice(1) : url;
+    return `${cleanBase}/storage/v1/object/public/peritaje/${path}`;
+  };
+
+  const confirmUpload = async () => {
+    if (!pendingUpload) return;
+    const { orderId, file } = pendingUpload;
+    setIsUploading(orderId);
+
+    try {
       const formData = new FormData();
-      formData.append("image", compressedFile); 
+      // Obtenemos la extensión real del archivo (webp, jpeg, etc.)
+      const extension = file.type.split('/')[1] || 'jpg';
+      const fileName = `tech_photo_${Date.now()}.${extension}`;
+      formData.append("image", file, fileName); 
 
       const { data } = await api.post("/service-orders/upload-image", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
       if (data.ok) {
-        const currentImages = (order as any).images || [];
-        await updateOrder(orderId, { ...order, images: [...currentImages, data.url] });
+        const order = orders.find(o => o.id === orderId);
+        const currentImages = (order as any)?.images || [];
+        const newImages = [...currentImages, data.url];
+        
+        // Solo actualizamos el campo images para evitar conflictos de mapeo
+        await updateOrder(orderId, { 
+          ...order, 
+          images: newImages 
+        });
+        
         toast.success("Foto añadida a la orden");
+        setPendingUpload(null);
       }
     } catch (error) {
       toast.error("Error al subir imagen");
@@ -242,7 +285,7 @@ export default function TechnicianPage() {
       <header className="sticky top-0 z-[60] bg-primary/95 text-primary-foreground backdrop-blur-md px-4 py-3 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/taller.png" alt="Logo" className="h-10 w-10 object-contain shrink-0" />
+            <img src={pistonLogo} alt="Pistn Logo" className="h-8 w-8 md:h-10 md:w-10 object-contain shrink-0" />
             <div className="flex flex-col min-w-0">
               <h1 className="text-sm font-bold leading-none tracking-tight truncate">{isAdmin ? 'Supervisión de Patio' : 'Hoja de Trabajo'}</h1>
               <div className="flex items-center gap-1.5 mt-1">
@@ -309,8 +352,8 @@ export default function TechnicianPage() {
         {techOrders.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground flex flex-col items-center justify-center min-h-[50vh]">
             <img 
-              src="/taller.png" 
-              alt="Logo" 
+              src={pistonLogo} 
+              alt="Pistn Logo" 
               className="w-[10rem] h-[10rem] md:w-[15rem] md:h-[15rem] mx-auto mb-6 opacity-10 grayscale object-contain" 
             />
             <p className="text-lg font-medium opacity-50">Sin tareas asignadas</p>
@@ -409,12 +452,34 @@ export default function TechnicianPage() {
                   <div className="pt-2 border-t">
                     <p className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Fotos de Peritaje ({order.images?.length || 0}/3):</p>
                     <div className="grid grid-cols-4 gap-2">
-                      {order.images?.map((url: string, idx: number) => (
-                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border">
-                          <img src={url} className="object-cover w-full h-full" alt="Peritaje" />
+                      {order.images?.filter(Boolean).map((url: string, idx: number) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border cursor-zoom-in" onClick={() => setPreviewImage(resolveImageUrl(url))}>
+                          <img 
+                            src={resolveImageUrl(url)} 
+                            className="object-cover w-full h-full bg-muted" 
+                            alt={`Peritaje ${idx + 1}`} 
+                            onError={(e) => {
+                              console.error("❌ Error cargando imagen en Vista Técnico:", e.currentTarget.src);
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = "https://placehold.co/400x400?text=Error+Privacidad+Bucket";
+                            }}
+                          />
                         </div>
                       ))}
-                      {(!order.images || order.images.length < 3) && (
+                      {pendingUpload?.orderId === order.id ? (
+                        <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-primary animate-pulse flex flex-col items-center justify-center bg-primary/5 gap-1">
+                           <img src={pendingUpload.localUrl} className="absolute inset-0 object-cover w-full h-full opacity-40" />
+                           <Button size="icon" variant="default" className="h-8 w-8 rounded-full z-10" onClick={confirmUpload} disabled={!!isUploading}>
+                             {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                           </Button>
+                           <Button size="icon" variant="destructive" className="h-6 w-6 rounded-full z-10" onClick={() => {
+                             URL.revokeObjectURL(pendingUpload.localUrl);
+                             setPendingUpload(null);
+                           }}>
+                             <X className="h-3 w-3" />
+                           </Button>
+                        </div>
+                      ) : (!order.images || order.images.length < 3) && (
                         <label className={cn(
                           "flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors",
                           isUploading === order.id && "opacity-50 pointer-events-none"
@@ -530,6 +595,18 @@ export default function TechnicianPage() {
           <DialogFooter>
             <Button onClick={addPart}>Registrar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Vista Previa de Imagen */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img src={resolveImageUrl(previewImage || "")} className="max-w-full max-h-[85vh] object-contain rounded-lg" alt="Vista previa" />
+            <Button variant="secondary" size="icon" className="absolute top-2 right-2 rounded-full opacity-70" onClick={() => setPreviewImage(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

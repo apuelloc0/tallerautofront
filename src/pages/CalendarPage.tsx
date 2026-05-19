@@ -5,10 +5,30 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar as CalendarIcon, ArrowLeft, Car, LogOut, LogIn, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, ArrowLeft, Car, LogOut, LogIn, ChevronRight, MousePointer2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { STATUS_LABELS } from "@/types/workshop";
+import { SectionTour } from "@/components/layout/SectionTour";
+
+const CALENDAR_STEPS = [
+  {
+    title: "Historial Visual",
+    description: "En este calendario podrás ver rápidamente qué días hubo movimiento en tu taller.",
+    icon: <CalendarIcon className="h-10 w-10" />
+  },
+  {
+    title: "Entradas y Salidas",
+    description: "El subrayado naranja indica un Ingreso, mientras que el círculo verde marca una Entrega finalizada.",
+    icon: <div className="flex gap-2"><LogIn className="text-primary" /><LogOut className="text-green-500" /></div>
+  },
+  {
+    title: "Exploración Diaria",
+    description: "Haz clic en cualquier día para ver el detalle de los vehículos en las listas laterales.",
+    icon: <MousePointer2 className="h-10 w-10" />
+  }
+];
 
 export default function CalendarPage() {
   const navigate = useNavigate();
@@ -55,6 +75,14 @@ export default function CalendarPage() {
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <CalendarIcon className="h-6 w-6 text-primary" /> Historial de Movimientos
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent><p className="max-w-xs text-xs font-normal">Registro cronológico completo. Permite auditar el flujo de vehículos, revisando qué unidades ingresaron y cuáles salieron del taller en cualquier fecha seleccionada.</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </h1>
           <p className="text-muted-foreground text-sm font-medium">Cronograma de ingresos y salidas del taller</p>
         </div>

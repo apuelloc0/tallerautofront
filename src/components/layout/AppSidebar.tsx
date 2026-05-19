@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import pistonLogo from "@/assets/piston.webp";
 import {
   LayoutDashboard,
   Columns3,
@@ -43,7 +44,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const mainItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", url: "/calendario", icon: Calendar },
   { title: "Tablero de Control", url: "/kanban", icon: Columns3 },
   { title: "Órdenes", url: "/ordenes", icon: ClipboardList },
@@ -127,12 +128,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarHeader className="p-4 flex items-center justify-center overflow-hidden">
+      <SidebarHeader className={`flex items-center justify-center overflow-hidden transition-all duration-300 ${collapsed ? "p-2" : "p-4"}`}>
         <img 
-          src="/taller.png" 
-          alt="Logo" 
+          src={pistonLogo} 
+          alt="Pistn Logo" 
           className={`object-contain transition-all duration-300 ${
-            collapsed ? "w-8" : "w-[200px]"
+            collapsed ? "w-12" : "w-[200px]"
           }`} 
         />
       </SidebarHeader>

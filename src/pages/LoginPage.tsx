@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import pistonLogo from "@/assets/piston.webp";
+import loginbg from "@/assets/loginbg.webp";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -73,42 +74,64 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
-      {/* Elementos decorativos de fondo */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-500/10 rounded-full blur-[120px]" />
+    <div className="h-screen flex items-center justify-center bg-[#241705] relative overflow-hidden p-4">
+      {/* Capa de fondo con gradiente direccional */}
+      <div 
+        className="absolute inset-0 z-0"
+        style={{
+          background: `linear-gradient(135deg, #bc430d 0%, #241705 100%)`,
+        }}
+      />
+      {/* Resplandor ambiental para dar profundidad */}
+    <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#bc430d] rounded-full blur-[120px] opacity-20 animate-pulse z-0" />
 
-      <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-8 md:gap-20 z-10 px-6">
-        {/* Logo */}
-        <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1 animate-in fade-in slide-in-from-left-10 duration-1000">
-          <img src="/taller.png" alt="Logo" className="w-[180px] md:w-[280px] object-contain drop-shadow-2xl mb-4" />
-          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground">AutoTaller</h1>
-          <p className="text-xs md:text-base text-muted-foreground font-bold uppercase tracking-[0.3em] opacity-80">Gestión Profesional</p>
+    {/* Contenedor Principal (La Caja Dividida) */}
+    <div className="w-full max-w-5xl z-10 px-4 animate-in fade-in zoom-in duration-700">
+      <div className="flex flex-col md:flex-row bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-[2.5rem] overflow-hidden min-h-[600px]">
+        
+        {/* Lado Izquierdo: Imagen Decorativa */}
+        <div className="hidden md:flex md:w-1/2 relative bg-black/20 items-center justify-center overflow-hidden">
+          {/* Capa de imagen de fondo original */}
+          <div 
+            className="absolute inset-0 z-0 transition-all duration-700 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${loginbg})`
+            }}
+          />
         </div>
 
-        {/* Formulario */}
-        <div className="w-full max-w-md space-y-4 animate-in fade-in slide-in-from-right-10 duration-1000 delay-200">
-        <Card className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-2xl rounded-[2.5rem] overflow-hidden border">
-          <CardHeader className="text-center pb-2 pt-6">
-            <CardTitle className="text-xl font-bold">Bienvenido</CardTitle>
-            <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
-          </CardHeader>
-          <CardContent className="px-8 pb-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-xs text-destructive animate-in shake-in duration-300">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  {error}
-                </div>
-              )}
+        {/* Lado Derecho: Formulario */}
+        <div className="w-full md:w-1/2 flex-1 p-8 md:p-12 flex flex-col justify-center bg-white">
+          <div className="space-y-6">
+            {/* Logo y Branding */}
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <div className="flex items-center gap-0">
+                <img src={pistonLogo} alt="Pistn Logo" className="w-[6rem] object-contain" />
+                <h1 className="text-4xl font-black tracking-tighter text-[#241705] italic">Pistn</h1>
+              </div>
+              <p className="text-[10px] font-bold text-[#bc430d] uppercase tracking-[0.4em]">Gestión Profesional</p>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="username" className="text-[10px] font-bold uppercase ml-1 opacity-70 tracking-widest">Correo electrónico</Label>
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-[#241705]">Bienvenido</h2>
+              <p className="text-[#241705]/60 text-sm font-medium">Ingresa tus credenciales para acceder al sistema</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+                {error && (
+                  <div className="flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-xs text-destructive animate-in shake-in duration-300">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {error}
+                  </div>
+                )}
+
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Correo electrónico</Label>
                 <Input
                   id="username"
                   type="email"
                   placeholder="correo@taller.com"
-                  className="h-12 bg-background/50 border-white/10 rounded-2xl focus:ring-primary focus:border-primary transition-all px-4"
+                  className="h-12 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all px-4 text-[#241705] placeholder:text-[#241705]/30"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -116,12 +139,12 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between ml-1">
-                  <Label htmlFor="password" className="text-[10px] font-bold uppercase opacity-70 tracking-widest">Contraseña</Label>
+                  <Label htmlFor="password" className="text-[10px] font-bold uppercase text-[#241705]/70 tracking-widest">Contraseña</Label>
                   <Link
                     to="/recuperar-password"
-                    className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors uppercase"
+                    className="text-[10px] font-bold text-[#bc430d] hover:text-[#bc430d]/80 transition-colors uppercase"
                   >
                     ¿Olvidó su clave?
                   </Link>
@@ -131,7 +154,7 @@ export default function LoginPage() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="h-12 bg-background/50 border-white/10 rounded-2xl focus:ring-primary focus:border-primary transition-all px-4"
+                    className="h-12 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all px-4 text-[#241705] placeholder:text-[#241705]/30"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -139,7 +162,7 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#241705]/40 hover:text-[#241705]"
                     onClick={() => setShowPassword(!showPassword)}
                     tabIndex={-1}
                   >
@@ -149,11 +172,11 @@ export default function LoginPage() {
               </div>
 
               {/* Widget de Turnstile */}
-              <div className="flex justify-center py-2">
+              <div className="flex justify-center py-1">
                 <div id="turnstile-container-login"></div>
               </div>
 
-              <Button type="submit" className="w-full h-12 rounded-2xl text-base font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all" disabled={isLoading}>
+              <Button type="submit" className="w-full h-12 rounded-2xl text-base font-bold bg-[#bc430d] hover:bg-[#bc430d]/90 text-white shadow-lg shadow-[#bc430d]/20 hover:scale-[1.02] active:scale-[0.98] transition-all border-none" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -164,17 +187,17 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
 
-        <p className="text-center md:text-left md:ml-4 text-xs text-muted-foreground">
-          ¿No tienes cuenta?{" "}
-          <Link to="/registro" className="text-primary hover:underline font-medium">
-            Solicitar acceso
-          </Link>
-        </p>
+            <p className="text-center text-xs text-[#241705]/60 pt-4 font-medium">
+              ¿No tienes cuenta?{" "}
+              <Link to="/registro" className="text-[#bc430d] hover:underline font-bold">
+                Solicitar acceso
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

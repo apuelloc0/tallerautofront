@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fontsource imports - DM Sans */
+@import "@fontsource/dm-sans/400.css";
+@import "@fontsource/dm-sans/700.css";
+
 @layer base {
   :root {
     --background: 210 20% 98%;
@@ -103,5 +107,6 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "DM Sans", sans-serif;
   }
 }

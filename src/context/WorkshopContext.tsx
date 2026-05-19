@@ -377,7 +377,8 @@ export function WorkshopProvider({ children }: { children: ReactNode }) {
       diagnosis: orderData.diagnosis,
       status: mapStatusToDB(orderData.status),
       fuel_level: orderData.fuel_level || orderData.fuelLevel,
-      reception_checklist: orderData.reception_checklist || orderData.receptionChecklist
+      reception_checklist: orderData.reception_checklist || orderData.receptionChecklist,
+      images: orderData.images
     };
     const { data } = await api.patch(`/service-orders/${id}`, payload);
     const updatedOrder = normalizeOrder(data.data);
@@ -438,7 +439,8 @@ export function WorkshopProvider({ children }: { children: ReactNode }) {
       diagnosis: orderData.diagnosis,
       status: mapStatusToDB(orderData.status || "ingresado"),
       fuel_level: orderData.fuel_level || orderData.fuelLevel,
-      reception_checklist: orderData.reception_checklist || orderData.receptionChecklist
+      reception_checklist: orderData.reception_checklist || orderData.receptionChecklist,
+      images: orderData.images || []
     };
     // Cambiamos path a '/service-orders' según rutas del backend
     const { data } = await api.post("/service-orders", payload);

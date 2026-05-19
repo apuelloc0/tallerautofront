@@ -113,7 +113,7 @@ export default function ClientsPage() {
     if (cleanPhone.length === 10) {
       cleanPhone = "57" + cleanPhone;
     }
-    const message = `Hola ${name}, te escribimos del taller ${workshop?.name || 'AutoTaller'} para informarte sobre el estado de tu vehículo...`;
+    const message = `Hola ${name}, te escribimos del taller ${workshop?.name || 'Pistn'} para informarte sobre el estado de tu vehículo...`;
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, "_blank");
   };
 

@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/api/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { OnboardingTour } from "./OnboardingTour";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { users } = useWorkshop();
@@ -63,6 +64,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
+      <OnboardingTour />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
@@ -70,7 +72,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <span className="text-sm font-medium text-muted-foreground">
-                Sistema de Gestión de Taller
+                Pistn - Sistema de Gestión de Taller
               </span>
             </div>
             <div className="flex items-center gap-2">

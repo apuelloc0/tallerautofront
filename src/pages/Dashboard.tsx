@@ -1,13 +1,17 @@
 import { useMemo, useState } from "react";
-import { Car, ClipboardList, Users, Loader2, BarChart3, Info, Calendar as CalendarIcon, Copy, Check, UserPlus, Wrench, AlertCircle, RefreshCw, ChevronDown, ArrowUpRight } from "lucide-react";
+import pistonLogo from "@/assets/piston.webp";
+import { Car, ClipboardList, Users, BarChart3, Info, Calendar as CalendarIcon, Copy, Check, UserPlus, Wrench, AlertCircle, RefreshCw, ChevronDown, ArrowUpRight, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkshop } from "@/context/WorkshopContext";
 import { useAuth } from "@/context/AuthContext";
 import { STATUS_LABELS } from "@/types/workshop";
+import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import api from "@/api/api";
 import { CarLoader } from "@/components/ui/CarLoader";
 import { Calendar } from "@/components/ui/calendar";
+import { SuggestionsDialog } from "@/components/layout/SuggestionsDialog";
  
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -23,6 +28,9 @@ export default function Dashboard() {
   const [copiedRecep, setCopiedRecep] = useState(false);
   const { getVehicle, getClient, orders, technicians, parts, users: allUsers } = useWorkshop();
   const queryClient = useQueryClient();
+
+  // Estado para el formulario de sugerencias
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
 
   const { data: stats, isLoading, isRefetching } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -118,10 +126,10 @@ export default function Dashboard() {
     style: 'currency', currency: 'COP', maximumFractionDigits: 0
   }).format(v);
 
-  if (isLoading) {
+  if (isLoading && !stats) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <CarLoader message="Sincronizando datos..." />
+        <CarLoader message="Sincronizando Pistn..." />
       </div>
     );
   }
@@ -148,21 +156,32 @@ export default function Dashboard() {
     .slice(0, 5);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-10">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+
       {/* Header de Bienvenida */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-black tracking-tight">
-            Hola, {user?.name.split(' ')[0]}
-            {user?.workshop_name && (
-              <span className="text-primary ml-2">— {user.workshop_name}</span>
-            )}
-          </h1>
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-70 flex items-center gap-2">
-            <CalendarIcon className="h-3 w-3" /> {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <img src={pistonLogo} alt="Pistn Logo" className="h-10 w-10 md:h-12 md:w-12 object-contain" />
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black tracking-tight">
+              Hola, {user?.name.split(' ')[0]}
+              {user?.workshop_name && (
+                <span className="text-primary ml-2">— {user.workshop_name}</span>
+              )}
+            </h1>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-70 flex items-center gap-2">
+              <CalendarIcon className="h-3 w-3" /> {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            className="hidden md:flex rounded-xl border-primary/20 text-xs font-bold gap-2"
+            onClick={() => setSuggestionOpen(true)}
+          >
+            <MessageSquare className="h-4 w-4 text-primary" /> Sugerencias
+          </Button>
           <Button 
             variant="outline" 
             size="icon" 
@@ -323,6 +342,14 @@ export default function Dashboard() {
           <CardHeader className="py-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-primary" /> Agenda de Patio
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent><p className="max-w-xs text-[11px] font-normal leading-tight">Vista rápida del flujo de trabajo diario. Los indicadores muestran días con ingresos de vehículos y entregas finalizadas.</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </CardTitle>
             <Button 
               variant="ghost" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-tighter"
@@ -533,6 +560,8 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <SuggestionsDialog open={suggestionOpen} onOpenChange={setSuggestionOpen} />
     </div>
   );
 }

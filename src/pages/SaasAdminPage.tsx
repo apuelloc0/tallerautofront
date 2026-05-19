@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import pistonLogo from "@/assets/piston.webp";
+import { useQuery, useMutation, useQueryClient, useIsFetching } from "@tanstack/react-query";
 import api from "@/api/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Copy, Check, RefreshCw, ShieldCheck, Building, Ticket, Power, PowerOff, BarChart3, TrendingUp, Users as UsersIcon, Wallet, Trash2, Database, Download, Key, DollarSign } from "lucide-react";
+import { Loader2, Plus, Copy, Check, RefreshCw, ShieldCheck, Building, Ticket, Power, PowerOff, BarChart3, TrendingUp, Users as UsersIcon, Wallet, Trash2, Database, Download, Key, DollarSign, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +20,7 @@ import { CarLoader } from "@/components/ui/CarLoader";
 
 export default function SaasAdminPage() {
   const queryClient = useQueryClient();
+  const isFetchingAny = useIsFetching() > 0;
   const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function SaasAdminPage() {
   }, [user, authLoading, navigate]);
 
   // Obtener lista de códigos con capacidad de refresco manual
-  const { data: response, isLoading, refetch, isRefetching } = useQuery({
+  const { data: response, isLoading } = useQuery({
     queryKey: ["invitation-codes"],
     queryFn: async () => {
       const { data } = await api.get("/invitations");
@@ -80,6 +82,16 @@ export default function SaasAdminPage() {
     },
     staleTime: 30 * 60 * 1000, // El histórico cambia poco, caché de 30 min
     refetchOnWindowFocus: false,
+  });
+
+  // Obtener sugerencias de usuarios
+  const { data: suggestionsResponse, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ["saas-suggestions"],
+    queryFn: async () => {
+      const { data } = await api.get("/invitations/suggestions");
+      return data.data;
+    },
+    staleTime: 10 * 1000, // Datos frescos solo por 10 segundos para ver feedback rápido
   });
 
   // Obtener historial de pagos de plataforma
@@ -199,12 +211,13 @@ export default function SaasAdminPage() {
     (isLoading && !response) || 
     (wsLoading && !wsResponse) || 
     (archivesLoading && !archivesResponse) ||
-    (paymentsLoading && !paymentsResponse);
+    (paymentsLoading && !paymentsResponse) ||
+    (suggestionsLoading && !suggestionsResponse);
 
   if (authLoading || isInitialLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <CarLoader message="Cargando plataforma SaaS..." />
+        <CarLoader message="Cargando Pistn..." />
       </div>
     );
   }
@@ -214,6 +227,17 @@ export default function SaasAdminPage() {
   const stats = statsResponse || { kpis: {}, growth: [] };
   const archives = archivesResponse?.data || [];
   const platformPayments = paymentsResponse || [];
+  const suggestions = suggestionsResponse || [];
+
+  // Nueva función para refrescar absolutamente todos los datos del SaaS
+  const handleRefreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["invitation-codes"] });
+    queryClient.invalidateQueries({ queryKey: ["saas-workshops"] });
+    queryClient.invalidateQueries({ queryKey: ["saas-business-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["saas-archives"] });
+    queryClient.invalidateQueries({ queryKey: ["saas-suggestions"] });
+    queryClient.invalidateQueries({ queryKey: ["saas-platform-payments"] });
+  };
 
   const handleOpenPayment = (ws: any) => {
     setSelectedWsForPayment(ws);
@@ -230,8 +254,8 @@ export default function SaasAdminPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <h1 className="text-lg font-bold tracking-tight">Administración SaaS</h1>
+            <img src={pistonLogo} alt="Pistn Logo" className="h-6 w-6 object-contain" />
+            <h1 className="text-lg font-bold tracking-tight">Pistn Admin</h1>
           </div>
           <p className="text-muted-foreground text-xs leading-tight">Gestiona las licencias de acceso y talleres registrados.</p>
         </div>
@@ -239,12 +263,12 @@ export default function SaasAdminPage() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => refetch()} 
-            disabled={isRefetching}
-            title="Actualizar lista"
+            onClick={handleRefreshAll} 
+            disabled={isFetchingAny}
+            title="Actualizar todos los datos"
             className="h-8"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetchingAny ? 'animate-spin' : ''}`} />
           </Button>
           <Button 
             size="sm"
@@ -282,7 +306,7 @@ export default function SaasAdminPage() {
 
       <Tabs defaultValue="metrics" className="w-full">
         <div className="w-full overflow-x-auto no-scrollbar">
-          <TabsList className="inline-flex w-max min-w-full md:grid md:grid-cols-5 h-10 p-1 bg-muted/50 rounded-xl gap-1">
+          <TabsList className="inline-flex w-max min-w-full md:grid md:grid-cols-6 h-10 p-1 bg-muted/50 rounded-xl gap-1">
             <TabsTrigger value="metrics" className="flex gap-2 text-xs h-8 px-4 rounded-lg">
               <BarChart3 className="h-3.5 w-3.5" /> Negocio
             </TabsTrigger>
@@ -297,6 +321,9 @@ export default function SaasAdminPage() {
             </TabsTrigger>
             <TabsTrigger value="archives" className="flex gap-2 text-xs h-8 px-4 rounded-lg">
               <Database className="h-3.5 w-3.5" /> Histórico ({archives.length})
+            </TabsTrigger>
+            <TabsTrigger value="suggestions" className="flex gap-2 text-xs h-8 px-4 rounded-lg">
+              <MessageSquareText className="h-3.5 w-3.5" /> Sugerencias ({suggestions.length})
             </TabsTrigger>
           </TabsList>
         </div>
@@ -554,6 +581,49 @@ export default function SaasAdminPage() {
                             <Download className="h-3 w-3 mr-1" /> JSON
                           </Button>
                         </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="suggestions" className="mt-2 outline-none">
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardHeader className="bg-muted/30 border-b p-3">
+              <CardTitle className="text-sm font-bold">Feedback de Usuarios</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader><TableRow className="h-8">
+                  <TableHead className="h-8 py-0">Tipo</TableHead>
+                  <TableHead className="h-8 py-0">Taller / Usuario</TableHead>
+                  <TableHead className="h-8 py-0">Comentario</TableHead>
+                  <TableHead className="h-8 py-0">Fecha</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {suggestions.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-10 text-muted-foreground text-xs">No hay sugerencias todavía.</TableCell></TableRow>
+                  ) : (
+                    suggestions.map((s: any) => (
+                      <TableRow key={s.id}>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] uppercase font-black",
+                            s.type === 'falla' ? "text-red-600 border-red-200" : 
+                            s.type === 'mejora' ? "text-primary border-primary/20" : "text-muted-foreground"
+                          )}>
+                            {s.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="font-bold">{s.workshops?.name}</div>
+                          <div className="opacity-70 text-[10px]">{s.users?.full_name}</div>
+                        </TableCell>
+                        <TableCell className="text-[11px] max-w-xs">{s.content}</TableCell>
+                        <TableCell className="text-[10px]">{new Date(s.created_at).toLocaleString()}</TableCell>
                       </TableRow>
                     ))
                   )}

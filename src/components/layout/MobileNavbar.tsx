@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -12,7 +13,8 @@ import {
   ShieldCheck, 
   Settings, 
   LogOut,
-  BarChart3
+  BarChart3,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -23,11 +25,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SuggestionsDialog } from "./SuggestionsDialog";
 
 export function MobileNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
 
   if (!user) return null;
 
@@ -102,6 +106,14 @@ export function MobileNavbar() {
             <DropdownMenuSeparator className="opacity-20" />
             
             <div className="grid gap-0.5">
+              <DropdownMenuItem 
+                onClick={() => setSuggestionOpen(true)}
+                className="flex items-center gap-3 py-2.5 px-3 rounded-xl focus:bg-primary/10 focus:text-primary cursor-pointer transition-colors outline-none"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="text-sm font-medium">Sugerencias</span>
+              </DropdownMenuItem>
+
               {moreItems.map((item) => (
                 <DropdownMenuItem 
                   key={item.path} 
@@ -125,6 +137,8 @@ export function MobileNavbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <SuggestionsDialog open={suggestionOpen} onOpenChange={setSuggestionOpen} />
     </nav>
   );
 }

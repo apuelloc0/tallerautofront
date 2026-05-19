@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import pistonLogo from "@/assets/piston.webp";
+import loginbg from "@/assets/loginbg.webp";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, Loader2, ArrowLeft, Eye, EyeOff, Building2, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ROLE_LABELS, ROLE_DESCRIPTIONS, type UserRole } from "@/types/auth";
@@ -24,6 +26,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [securityQuestion, setSecurityQuestion] = useState("");
   const [securityAnswer, setSecurityAnswer] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const { register, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +37,9 @@ export default function RegisterPage() {
     let widgetId: string | null = null;
 
     const renderWidget = () => {
+      // Solo renderizar el widget en producción para evitar errores de dominio y ruido en consola en localhost
+      if (!import.meta.env.PROD) return;
+
       if ((window as any).turnstile && !widgetId) {
         try {
           widgetId = (window as any).turnstile.render("#turnstile-container", {
@@ -84,6 +90,10 @@ export default function RegisterPage() {
       setError("La pregunta de seguridad es necesaria para recuperar tu cuenta.");
       return;
     }
+    if (!acceptedTerms) {
+      setError("Debes aceptar los Términos de Servicio y la Política de Privacidad.");
+      return;
+    }
     
     if (!captchaToken && import.meta.env.PROD) {
       setError("Por favor completa la verificación de seguridad (Captcha).");
@@ -120,63 +130,72 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative p-4 py-10">
-      {/* Contenedor de recorte para elementos decorativos (evita doble scroll) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-500/10 rounded-full blur-[120px]" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-[#241705] relative p-4 py-4 overflow-hidden">
+      {/* Capa de fondo con gradiente direccional */}
+      <div 
+        className="absolute inset-0 z-0"
+        style={{
+          background: `linear-gradient(135deg, #bc430d 0%, #241705 100%)`,
+        }}
+      />
+      {/* Resplandor ambiental para dar profundidad */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#bc430d] rounded-full blur-[120px] opacity-20 animate-pulse z-0" />
 
-      <div className="w-full max-w-6xl flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 z-10 relative">
-        {/* Logo */}
-        <div className="flex flex-col items-center md:items-start text-center md:text-left gap-1 animate-in fade-in slide-in-from-left-10 duration-1000">
-          <img src="/taller.png" alt="Logo" className="w-[140px] md:w-[220px] object-contain drop-shadow-2xl mb-2" />
-          <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-foreground mt-1">AutoTaller</h1>
-          <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-80">Registro de Personal</p>
-        </div>
+      {/* Contenedor Principal (La Caja Dividida) */}
+      <div className="w-[90%] md:w-full max-w-3xl z-10 animate-in fade-in zoom-in duration-700">
+        <div className="bg-white border border-[#241705]/10 shadow-2xl rounded-[2.5rem] overflow-hidden p-5 md:p-7">
+          
+          <div className="space-y-2">
+            {/* Logo y Branding */}
+            <div className="flex flex-col items-center gap-1 mb-0">
+                <div className="flex items-center gap-0">
+                  <img src={pistonLogo} alt="Pistn Logo" className="w-16 object-contain" />
+                  <h1 className="text-2xl font-black tracking-tighter text-[#241705] italic">Pistn</h1>
+                </div>
+                <p className="text-[10px] font-bold text-[#bc430d] uppercase tracking-[0.4em]">Registro de Personal</p>
+              </div>
 
-        {/* Formulario */}
-        <div className="w-full max-w-md animate-in fade-in slide-in-from-right-10 duration-1000 delay-200">
-        <Card className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-white/20 dark:border-white/10 shadow-2xl rounded-[2rem] overflow-hidden border">
-          <CardHeader className="text-center pb-2 pt-4">
-            <CardTitle className="text-base font-bold">Solicitar Acceso</CardTitle>
-            <CardDescription>Completa el formulario para crear tu cuenta interna</CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-4">
-          <Tabs value={regType} onValueChange={(v) => setRegType(v as any)} className="mb-3">
-            <TabsList className="grid w-full grid-cols-2 rounded-xl h-8">
-              <TabsTrigger value="owner">Soy Dueño</TabsTrigger>
-              <TabsTrigger value="employee">Soy Empleado</TabsTrigger>
-            </TabsList>
-          </Tabs>
+              <div className="text-center space-y-0 mb-0">
+                <h2 className="text-xl font-bold text-[#241705]">Solicitar Acceso</h2>
+                <p className="text-[#241705]/60 text-[13px] font-medium">Completa el formulario para crear tu cuenta interna</p>
+              </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="flex justify-center mb-1">
+                <Tabs value={regType} onValueChange={(v) => setRegType(v as any)} className="w-full max-w-xs">
+                  <TabsList className="flex w-full rounded-xl h-9 bg-black/5 p-1 gap-1">
+                    <TabsTrigger value="owner" className="flex-1 rounded-lg text-[11px] font-bold transition-all data-[state=active]:bg-[#bc430d] data-[state=active]:text-white data-[state=inactive]:text-[#241705]/60 shadow-none">Soy Dueño</TabsTrigger>
+                    <TabsTrigger value="employee" className="flex-1 rounded-lg text-[11px] font-bold transition-all data-[state=active]:bg-[#bc430d] data-[state=active]:text-white data-[state=inactive]:text-[#241705]/60 shadow-none">Soy Empleado</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
               {error && (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-2 text-[10px] text-destructive">
+                <div className="md:col-span-2 flex items-center gap-2 rounded-xl bg-destructive/10 p-2 text-[11px] text-destructive animate-in shake-in duration-300">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {error}
                 </div>
               )}
 
-              <div className="space-y-0.5">
-                <Label htmlFor="name" className="text-[9px] font-bold uppercase ml-1 opacity-70">Nombre completo</Label>
+              <div className="space-y-1">
+                <Label htmlFor="name" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Nombre completo</Label>
                 <Input
                   id="name"
                   placeholder="Ej: Juan Pérez"
-                  className="h-10 bg-background/50 border-white/10 rounded-xl"
+                  className="h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all px-4 text-[#241705] placeholder:text-[#241705]/30"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="space-y-0.5">
-                <Label htmlFor="reg-email" className="text-[9px] font-bold uppercase ml-1 opacity-70">Correo electrónico</Label>
+              <div className="space-y-1">
+                <Label htmlFor="reg-email" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Correo electrónico</Label>
                 <Input
                   id="reg-email"
                   type="email"
                   placeholder="correo@taller.com"
-                  className="h-10 bg-background/50 border-white/10 rounded-xl"
+                  className="h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all px-4 text-[#241705] placeholder:text-[#241705]/30"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -186,13 +205,13 @@ export default function RegisterPage() {
 
             {regType === "owner" && (
               <>
-              <div className="space-y-0.5">
-                <Label htmlFor="ws-name" className="text-[9px] font-bold uppercase ml-1 opacity-70">Nombre de tu Taller</Label>
+              <div className="space-y-1">
+                <Label htmlFor="ws-name" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Nombre de tu Taller</Label>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                   <Input
                     id="ws-name"
-                    className="pl-9 h-10 bg-background/50 border-white/10 rounded-xl"
+                    className="pl-10 h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all text-[#241705] placeholder:text-[#241705]/30"
                     placeholder="Ej: Taller Mecánico El Rayo"
                     value={workshopName}
                     onChange={(e) => setWorkshopName(e.target.value)}
@@ -200,14 +219,14 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-0.5">
-                <Label htmlFor="owner-key" className="text-[9px] font-bold uppercase ml-1 opacity-70">Clave de Acceso Propietario</Label>
+              <div className="space-y-1">
+                <Label htmlFor="owner-key" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Clave de Acceso Propietario</Label>
                 <div className="relative">
-                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
                   <Input
                     id="owner-key"
                     type="password"
-                    className="pl-9 h-10 bg-background/50 border-white/10 rounded-xl"
+                    className="pl-10 h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all text-[#241705] placeholder:text-[#241705]/30"
                     placeholder="Clave de Licencia"
                     value={ownerKey}
                     onChange={(e) => setOwnerKey(e.target.value)}
@@ -220,13 +239,13 @@ export default function RegisterPage() {
             
             {regType === "employee" && (
               <>
-                <div className="space-y-0.5">
-                  <Label htmlFor="ws-id" className="text-[9px] font-bold uppercase ml-1 opacity-70">Código del Taller (ID)</Label>
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="ws-id" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Código del Taller (ID)</Label>
                   <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#241705]/30" />
                     <Input
                       id="ws-id"
-                      className="pl-9 h-10 bg-background/50 border-white/10 rounded-xl"
+                      className="pl-10 h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all text-[#241705] placeholder:text-[#241705]/30"
                       placeholder="Pega el código de tu taller"
                       value={workshopIdCode}
                       onChange={(e) => setWorkshopIdCode(e.target.value)}
@@ -237,12 +256,12 @@ export default function RegisterPage() {
               </>
             )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-[9px] font-bold uppercase ml-1 opacity-70">Pregunta de Seguridad</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:col-span-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Pregunta Seguridad</Label>
                   <Select value={securityQuestion} onValueChange={setSecurityQuestion}>
-                    <SelectTrigger className="h-10 bg-background/50 border-white/10 rounded-xl text-xs">
-                      <SelectValue placeholder="Selecciona" />
+                    <SelectTrigger className="h-10 bg-gray-50 border-[#241705]/10 rounded-2xl text-xs text-[#241705] focus:ring-[#bc430d]">
+                      <SelectValue placeholder="Elegir" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="¿Nombre de tu primera mascota?">¿Mascota?</SelectItem>
@@ -251,20 +270,20 @@ export default function RegisterPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-0.5">
-                  <Label className="text-[9px] font-bold uppercase ml-1 opacity-70">Tu Respuesta</Label>
-                  <Input className="h-10 bg-background/50 border-white/10 rounded-xl" placeholder="..." value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} />
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Respuesta</Label>
+                  <Input className="h-10 bg-gray-50 border-[#241705]/10 rounded-2xl text-[#241705] px-4 placeholder:text-[#241705]/30" placeholder="..." value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} />
                 </div>
               </div>
 
-              <div className="space-y-0.5">
-                <Label htmlFor="reg-password" className="text-[9px] font-bold uppercase ml-1 opacity-70">Contraseña</Label>
+              <div className="space-y-1">
+                <Label htmlFor="reg-password" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Contraseña</Label>
                 <div className="relative">
                   <Input
                     id="reg-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Mínimo 6 caracteres"
-                    className="h-10 bg-background/50 border-white/10 rounded-xl"
+                    className="h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all px-4 text-[#241705] placeholder:text-[#241705]/30"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -272,7 +291,7 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#241705]/40 hover:text-[#241705]"
                     onClick={() => setShowPassword(!showPassword)}
                     tabIndex={-1}
                   >
@@ -281,14 +300,14 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="space-y-0.5">
-                <Label htmlFor="confirm-password" className="text-[9px] font-bold uppercase ml-1 opacity-70">Confirmar contraseña</Label>
+              <div className="space-y-1">
+                <Label htmlFor="confirm-password" className="text-[10px] font-bold uppercase ml-1 text-[#241705]/70 tracking-widest">Confirmar contraseña</Label>
                 <div className="relative">
                   <Input
                     id="confirm-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Repite la contraseña"
-                    className="h-10 bg-background/50 border-white/10 rounded-xl"
+                    className="h-10 bg-gray-50 border-[#241705]/10 rounded-2xl focus:ring-[#bc430d] focus:border-[#bc430d] transition-all px-4 text-[#241705] placeholder:text-[#241705]/30"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
@@ -298,11 +317,25 @@ export default function RegisterPage() {
               </div>
 
               {/* Widget de Turnstile */}
-              <div className="flex justify-center py-2">
+              <div className="md:col-span-2 flex justify-center py-0">
                 <div id="turnstile-container"></div>
               </div>
 
-              <Button type="submit" className="w-full h-10 rounded-xl text-sm font-bold shadow-lg shadow-primary/20" disabled={isLoading}>
+              <div className="md:col-span-2 flex items-center justify-center space-x-2 px-4 py-1">
+                <Checkbox 
+                  id="terms" 
+                  checked={acceptedTerms} 
+                  onCheckedChange={(checked) => setAcceptedTerms(!!checked)}
+                  className="mt-0.5 border-[#241705]/20 data-[state=checked]:bg-[#bc430d] data-[state=checked]:border-[#bc430d]"
+                />
+                <label htmlFor="terms" className="text-[10px] text-[#241705]/60 leading-tight cursor-pointer">
+                  Acepto los{" "}
+                  <Link to="/terminos" className="font-bold underline hover:text-[#bc430d]">Términos de Servicio</Link> y la{" "}
+                  <Link to="/privacidad" className="font-bold underline hover:text-[#bc430d]">Política de Privacidad</Link> de Pistn.
+                </label>
+              </div>
+
+              <Button type="submit" className="md:col-span-2 w-full max-w-sm mx-auto h-10 rounded-2xl text-base font-bold bg-[#bc430d] hover:bg-[#bc430d]/90 text-white shadow-lg shadow-[#bc430d]/20 hover:scale-[1.01] active:scale-[0.99] transition-all border-none" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -313,18 +346,17 @@ export default function RegisterPage() {
                 )}
               </Button>
             </form>
-          </CardContent>
-        </Card>
 
-        <div className="text-center md:text-left md:ml-4 mt-4">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Volver al inicio de sesión
-          </Link>
-        </div>
+            <div className="text-center pt-1">
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-1 text-xs text-[#bc430d] hover:underline font-bold"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Volver al inicio de sesión
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

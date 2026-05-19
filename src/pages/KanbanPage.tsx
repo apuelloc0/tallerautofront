@@ -9,8 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkshop } from "@/context/WorkshopContext";
 import { STATUS_COLUMNS, STATUS_LABELS, OrderStatus } from "@/types/workshop";
-import { Clock, User, Search, Filter, CheckCircle2, Info, AlertCircle, Package } from "lucide-react";
+import { Clock, User, Search, Filter, CheckCircle2, Info, AlertCircle, Package, MousePointer2, LayoutDashboard } from "lucide-react";
 import { toast } from "sonner";
+import { SectionTour } from "@/components/layout/SectionTour";
+
+const KANBAN_STEPS = [
+  {
+    title: "Flujo de Trabajo",
+    description: "Organiza tu taller moviendo las tarjetas entre columnas según el avance de la reparación.",
+    icon: <LayoutDashboard className="h-10 w-10" />
+  },
+  {
+    title: "Arrastrar y Soltar",
+    description: "Puedes mover cualquier vehículo a un nuevo estado simplemente arrastrando su tarjeta.",
+    icon: <MousePointer2 className="h-10 w-10" />
+  },
+  {
+    title: "Alertas Críticas",
+    description: "Si ves un icono naranja parpadeando, significa que un técnico ha solicitado tu veredicto para entregar el vehículo.",
+    icon: <AlertCircle className="h-10 w-10 text-orange-500 animate-pulse" />
+  }
+];
 
 export default function KanbanPage() {
   const { orders, updateOrderStatus, getVehicle, technicians, getClient } = useWorkshop();

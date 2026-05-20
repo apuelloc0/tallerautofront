@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import pistonLogo from "@/assets/piston.webp";
+import pistonLogo from "@/assets/pistnlogo.png";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -285,7 +285,7 @@ export default function TechnicianPage() {
       <header className="sticky top-0 z-[60] bg-primary/95 text-primary-foreground backdrop-blur-md px-4 py-3 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={pistonLogo} alt="Pistn Logo" className="h-8 w-8 md:h-10 md:w-10 object-contain shrink-0" />
+            <img src={pistonLogo} alt="Pistn Logo" className="h-10 w-10 md:h-10 md:w-10 object-contain shrink-0" />
             <div className="flex flex-col min-w-0">
               <h1 className="text-sm font-bold leading-none tracking-tight truncate">{isAdmin ? 'Supervisión de Patio' : 'Hoja de Trabajo'}</h1>
               <div className="flex items-center gap-1.5 mt-1">
@@ -354,7 +354,7 @@ export default function TechnicianPage() {
             <img 
               src={pistonLogo} 
               alt="Pistn Logo" 
-              className="w-[10rem] h-[10rem] md:w-[15rem] md:h-[15rem] mx-auto mb-6 opacity-10 grayscale object-contain" 
+              className="w-[12rem] h-[12rem] md:w-[15rem] md:h-[15rem] mx-auto mb-6 opacity-10 grayscale object-contain" 
             />
             <p className="text-lg font-medium opacity-50">Sin tareas asignadas</p>
           </div>

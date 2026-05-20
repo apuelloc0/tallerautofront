@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import pistonLogo from "@/assets/piston.webp";
+import pistonLogo from "@/assets/pistnlogo.png";
 import { Car, ClipboardList, Users, BarChart3, Info, Calendar as CalendarIcon, Copy, Check, UserPlus, Wrench, AlertCircle, RefreshCw, ChevronDown, ArrowUpRight, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -161,12 +161,12 @@ export default function Dashboard() {
       {/* Header de Bienvenida */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <img src={pistonLogo} alt="Pistn Logo" className="h-10 w-10 md:h-12 md:w-12 object-contain" />
+          {/* <img src={pistonLogo} alt="Pistn Logo" className="h-10 w-10 md:h-12 md:w-12 object-contain" /> */}
           <div className="space-y-1">
             <h1 className="text-2xl font-black tracking-tight">
-              Hola, {user?.name.split(' ')[0]}
+              Bienvenido, {user?.name.split(' ')[0]}
               {user?.workshop_name && (
-                <span className="text-primary ml-2">— {user.workshop_name}</span>
+                <span className="text-primary ml-2"> {user.workshop_name}</span>
               )}
             </h1>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest opacity-70 flex items-center gap-2">

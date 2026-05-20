@@ -7,10 +7,10 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"; // Mantener esta línea
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import pistonLogo from "@/assets/piston.webp";
+import pistonLogo from "@/assets/pistnlogo.png";
 import { 
   LayoutDashboard, 
   Columns3, 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import pistonLogo from "@/assets/piston.webp";
+import pistonLogo from "@/assets/pistnlogo.png";
 import loginbg from "@/assets/loginbg.webp";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -147,13 +147,9 @@ export default function RegisterPage() {
           
           <div className="space-y-2">
             {/* Logo y Branding */}
-            <div className="flex flex-col items-center gap-1 mb-0">
-                <div className="flex items-center gap-0">
-                  <img src={pistonLogo} alt="Pistn Logo" className="w-16 object-contain" />
-                  <h1 className="text-2xl font-black tracking-tighter text-[#241705] italic">Pistn</h1>
-                </div>
-                <p className="text-[10px] font-bold text-[#bc430d] uppercase tracking-[0.4em]">Registro de Personal</p>
-              </div>
+            <div className="flex justify-center mb-2">
+              <img src={pistonLogo} alt="Pistn Logo" className="w-32 md:w-40 object-contain select-none" />
+            </div>
 
               <div className="text-center space-y-0 mb-0">
                 <h2 className="text-xl font-bold text-[#241705]">Solicitar Acceso</h2>

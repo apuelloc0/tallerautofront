@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import pistonLogo from "@/assets/piston.webp";
+import pistonLogo from "@/assets/pistnlogo.png";
 import loginbg from "@/assets/loginbg.webp";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -104,12 +104,8 @@ export default function LoginPage() {
         <div className="w-full md:w-1/2 flex-1 p-8 md:p-12 flex flex-col justify-center bg-white">
           <div className="space-y-6">
             {/* Logo y Branding */}
-            <div className="flex flex-col items-center gap-2 mb-4">
-              <div className="flex items-center gap-0">
-                <img src={pistonLogo} alt="Pistn Logo" className="w-[6rem] object-contain" />
-                <h1 className="text-4xl font-black tracking-tighter text-[#241705] italic">Pistn</h1>
-              </div>
-              <p className="text-[10px] font-bold text-[#bc430d] uppercase tracking-[0.4em]">Gestión Profesional</p>
+            <div className="flex justify-center mb-4">
+              <img src={pistonLogo} alt="Pistn Logo" className="w-32 object-contain select-none" />
             </div>
 
             <div className="text-center space-y-2">

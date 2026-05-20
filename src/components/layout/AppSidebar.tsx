@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import pistonLogo from "@/assets/piston.webp";
+import pistonLogo from "@/assets/pistnlogo.png";
 import {
   LayoutDashboard,
   Columns3,
@@ -133,7 +133,7 @@ export function AppSidebar() {
           src={pistonLogo} 
           alt="Pistn Logo" 
           className={`object-contain transition-all duration-300 ${
-            collapsed ? "w-12" : "w-[200px]"
+            collapsed ? "w-20" : "w-[140px]"
           }`} 
         />
       </SidebarHeader>
